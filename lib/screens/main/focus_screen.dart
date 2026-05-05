@@ -152,11 +152,15 @@ class _TimerCard extends StatelessWidget {
                 color: AppColors.primary,
                 background: AppColors.blueSoft,
               ),
-              const _Pill(
+              _Pill(
                 icon: Icons.shield_rounded,
-                label: 'Strict Mode Active',
-                color: AppColors.success,
-                background: AppColors.successSoft,
+                label: focus.strictMode ? 'Strict Mode Active' : 'Strict Mode Off',
+                color: focus.strictMode
+                    ? AppColors.success
+                    : AppColors.textSecondary,
+                background: focus.strictMode
+                    ? AppColors.successSoft
+                    : AppColors.cardSoft,
               ),
             ],
           ),
@@ -326,7 +330,7 @@ class _ControlCard extends StatelessWidget {
       icon: Icons.play_arrow_rounded,
       color: AppColors.primary,
       background: AppColors.blueSoft,
-      onTap: focus.hasSelectedTask ? focus.startSelectedTask : null,
+      onTap: focus.startSelectedTask,
     );
   }
 }
@@ -656,7 +660,7 @@ class _TimerRing extends StatelessWidget {
                     child: Text(
                       focus.hasSelectedTask
                           ? focus.formattedDuration
-                          : 'Select task',
+                          : '${focus.formattedDuration} default',
                       style: AppTextStyles.label,
                     ),
                   ),
@@ -940,13 +944,13 @@ String _statusLabel(FocusProvider focus) {
     case FocusSessionStatus.review:
       return 'Review';
     case FocusSessionStatus.idle:
-      return focus.hasSelectedTask ? 'Ready' : 'Select task';
+      return focus.hasSelectedTask ? 'Ready' : 'Default timer';
   }
 }
 
 String _liveMessage(FocusProvider focus) {
   if (!focus.hasSelectedTask) {
-    return 'Select a task to begin.';
+    return 'Start a quick session or select a task.';
   }
   if (focus.isPaused) {
     return 'Paused. Resume when ready.';

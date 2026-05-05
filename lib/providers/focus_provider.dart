@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/focus_session_model.dart';
 import '../models/task_model.dart';
 import '../services/focus_session_storage_service.dart';
+import 'settings_provider.dart';
 import 'task_provider.dart';
 
 enum FocusSessionStatus {
@@ -18,13 +19,21 @@ class FocusProvider extends ChangeNotifier {
   FocusProvider({
     required FocusSessionStorageService storageService,
     required TaskProvider taskProvider,
+    required SettingsProvider settingsProvider,
   })  : _storageService = storageService,
-        _taskProvider = taskProvider;
+        _taskProvider = taskProvider,
+        _settingsProvider = settingsProvider {
+    _settingsProvider.addListener(_handleSettingsChanged);
+    loadSessions();
+    _resetToDefaultDuration();
+  }
 
   final FocusSessionStorageService _storageService;
   final TaskProvider _taskProvider;
+  final SettingsProvider _settingsProvider;
 
   Timer? _timer;
+  List<FocusSessionModel> _sessions = [];
   TaskModel? _selectedTask;
   FocusSessionStatus _status = FocusSessionStatus.idle;
   DateTime? _startedAt;
@@ -32,21 +41,38 @@ class FocusProvider extends ChangeNotifier {
   int _remainingSeconds = 0;
   int _distractions = 0;
   int _exitAttempts = 0;
+  bool _isLoadingSessions = true;
   bool _isSaving = false;
   String? _errorMessage;
   FocusSessionModel? _lastSession;
 
+  List<FocusSessionModel> get sessions => List.unmodifiable(_sessions);
   TaskModel? get selectedTask => _selectedTask;
   FocusSessionStatus get status => _status;
   FocusSessionModel? get lastSession => _lastSession;
+  bool get isLoadingSessions => _isLoadingSessions;
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
-  int get durationSeconds => _durationSeconds;
-  int get remainingSeconds => _remainingSeconds;
+  int get defaultDurationSeconds =>
+      _settingsProvider.defaultFocusDuration * 60;
+  int get durationSeconds {
+    if (_selectedTask == null && !isActive && !isReview) {
+      return defaultDurationSeconds;
+    }
+    return _durationSeconds == 0 ? defaultDurationSeconds : _durationSeconds;
+  }
+
+  int get remainingSeconds {
+    if (_selectedTask == null && !isActive && !isReview) {
+      return defaultDurationSeconds;
+    }
+    return _durationSeconds == 0 ? defaultDurationSeconds : _remainingSeconds;
+  }
   int get distractions => _distractions;
   int get exitAttempts => _exitAttempts;
-  int get elapsedSeconds => _durationSeconds - _remainingSeconds;
+  int get elapsedSeconds => durationSeconds - remainingSeconds;
   bool get hasSelectedTask => _selectedTask != null;
+  bool get strictMode => _settingsProvider.strictMode;
   bool get isActive =>
       _status == FocusSessionStatus.running ||
       _status == FocusSessionStatus.paused;
@@ -54,14 +80,86 @@ class FocusProvider extends ChangeNotifier {
   bool get isPaused => _status == FocusSessionStatus.paused;
   bool get isReview => _status == FocusSessionStatus.review;
   double get progress {
-    if (_durationSeconds == 0) {
+    if (durationSeconds == 0) {
       return 0;
     }
-    return (elapsedSeconds / _durationSeconds).clamp(0, 1).toDouble();
+    return (elapsedSeconds / durationSeconds).clamp(0, 1).toDouble();
   }
 
-  String get formattedRemaining => _formatSeconds(_remainingSeconds);
-  String get formattedDuration => _formatDuration(_durationSeconds);
+  String get formattedRemaining => _formatSeconds(remainingSeconds);
+  String get formattedDuration => _formatDuration(durationSeconds);
+
+  int get totalFocusSeconds => _sessions.fold<int>(
+        0,
+        (total, session) => total + session.elapsedSeconds,
+      );
+
+  int get todayFocusSeconds {
+    final now = DateTime.now();
+    return _sessions
+        .where((session) => _isSameDay(session.endedAt, now))
+        .fold<int>(0, (total, session) => total + session.elapsedSeconds);
+  }
+
+  double get dailyGoalProgress {
+    final goalSeconds = _settingsProvider.dailyGoalMinutes * 60;
+    if (goalSeconds == 0) {
+      return 0;
+    }
+    return (todayFocusSeconds / goalSeconds).clamp(0, 1).toDouble();
+  }
+
+  List<int> get weeklyFocusSeconds {
+    final now = DateTime.now();
+    final startOfWeek = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    final values = List<int>.filled(7, 0);
+
+    for (final session in _sessions) {
+      final sessionDay = DateTime(
+        session.endedAt.year,
+        session.endedAt.month,
+        session.endedAt.day,
+      );
+      final offset = sessionDay.difference(startOfWeek).inDays;
+      if (offset >= 0 && offset < values.length) {
+        values[offset] += session.elapsedSeconds;
+      }
+    }
+
+    return values;
+  }
+
+  int get currentStreak {
+    final activeDays = _sessions
+        .where((session) => session.elapsedSeconds > 0)
+        .map((session) => _dateKey(session.endedAt))
+        .toSet();
+    var cursor = DateTime.now();
+    var streak = 0;
+
+    while (activeDays.contains(_dateKey(cursor))) {
+      streak += 1;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+
+    return streak;
+  }
+
+  Future<void> loadSessions() async {
+    _isLoadingSessions = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _sessions = await _storageService.loadSessions();
+    } on Object {
+      _errorMessage = 'Could not load focus sessions.';
+    } finally {
+      _isLoadingSessions = false;
+      notifyListeners();
+    }
+  }
 
   void selectTask(TaskModel task) {
     if (isActive) {
@@ -82,9 +180,22 @@ class FocusProvider extends ChangeNotifier {
   void startSelectedTask() {
     final task = _selectedTask;
     if (task == null) {
+      startDefaultSession();
       return;
     }
     startSession(task);
+  }
+
+  void startDefaultSession() {
+    startSession(
+      TaskModel(
+        id: 'quick-focus-${DateTime.now().microsecondsSinceEpoch}',
+        title: 'Quick Focus',
+        subject: 'Study Goal',
+        estimatedMinutes: _settingsProvider.defaultFocusDuration,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   void startSession(TaskModel task) {
@@ -206,7 +317,8 @@ class FocusProvider extends ChangeNotifier {
 
     try {
       await _storageService.saveSession(session);
-      if (completed) {
+      _sessions = [..._sessions, session];
+      if (completed && !_isQuickFocusTask(task)) {
         await _taskProvider.markTaskCompleted(task.id);
       }
       _lastSession = session;
@@ -235,6 +347,34 @@ class FocusProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
+    _settingsProvider.removeListener(_handleSettingsChanged);
     super.dispose();
+  }
+
+  void _resetToDefaultDuration() {
+    if (_selectedTask != null || isActive || isReview) {
+      return;
+    }
+    _durationSeconds = defaultDurationSeconds;
+    _remainingSeconds = defaultDurationSeconds;
+  }
+
+  void _handleSettingsChanged() {
+    _resetToDefaultDuration();
+    notifyListeners();
+  }
+
+  bool _isQuickFocusTask(TaskModel task) {
+    return task.id.startsWith('quick-focus-');
+  }
+
+  bool _isSameDay(DateTime first, DateTime second) {
+    return first.year == second.year &&
+        first.month == second.month &&
+        first.day == second.day;
+  }
+
+  String _dateKey(DateTime date) {
+    return '${date.year}-${date.month}-${date.day}';
   }
 }

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main/main_shell.dart';
 
@@ -15,16 +16,24 @@ class FocusMateApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    final overlayStyle =
+        settings.darkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark.copyWith(
+      value: overlayStyle.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: AppColors.background,
-        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor:
+            settings.darkMode ? AppColors.darkBackground : AppColors.background,
+        systemNavigationBarIconBrightness:
+            settings.darkMode ? Brightness.light : Brightness.dark,
       ),
       child: MaterialApp(
         title: 'FocusMate',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
+        themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
         home: kEnableAuthFlow ? const _AuthGate() : const MainShell(),
       ),
     );

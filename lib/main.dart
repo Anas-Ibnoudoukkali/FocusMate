@@ -8,11 +8,13 @@ import 'providers/alarm_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/focus_provider.dart';
 import 'providers/navigation_provider.dart';
+import 'providers/settings_provider.dart';
 import 'providers/task_provider.dart';
 import 'services/alarm_storage_service.dart';
 import 'services/auth_service.dart';
 import 'services/focus_session_storage_service.dart';
 import 'services/firestore_service.dart';
+import 'services/settings_storage_service.dart';
 import 'services/storage_service.dart';
 import 'services/task_storage_service.dart';
 
@@ -30,6 +32,9 @@ Future<void> main() async {
       providers: [
         Provider<StorageService>(create: (_) => StorageService()),
         Provider<AlarmStorageService>(create: (_) => AlarmStorageService()),
+        Provider<SettingsStorageService>(
+          create: (_) => SettingsStorageService(),
+        ),
         Provider<TaskStorageService>(create: (_) => TaskStorageService()),
         Provider<FocusSessionStorageService>(
           create: (_) => FocusSessionStorageService(),
@@ -44,10 +49,16 @@ Future<void> main() async {
             context.read<TaskStorageService>(),
           ),
         ),
+        ChangeNotifierProvider<SettingsProvider>(
+          create: (context) => SettingsProvider(
+            context.read<SettingsStorageService>(),
+          ),
+        ),
         ChangeNotifierProvider<FocusProvider>(
           create: (context) => FocusProvider(
             storageService: context.read<FocusSessionStorageService>(),
             taskProvider: context.read<TaskProvider>(),
+            settingsProvider: context.read<SettingsProvider>(),
           ),
         ),
         if (kEnableAuthFlow) ...[

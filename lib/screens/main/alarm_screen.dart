@@ -5,6 +5,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/alarm_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/app_gradient_card.dart';
 import '../../widgets/app_primary_button.dart';
 import '../../widgets/section_title.dart';
@@ -25,12 +26,14 @@ class _AlarmScreenState extends State<AlarmScreen> {
   @override
   Widget build(BuildContext context) {
     final alarmProvider = context.watch<AlarmProvider>();
+    final settings = context.watch<SettingsProvider>();
     final alarm = alarmProvider.alarm;
     final time = _selectedTime ??
         TimeOfDay(hour: alarm?.hour ?? 7, minute: alarm?.minute ?? 0);
     final enabled = _enabled ?? alarm?.enabled ?? true;
-    final difficulty = _difficulty ?? alarm?.challengeDifficulty ?? 'Medium';
-    final soundName = _soundName ?? alarm?.soundName ?? 'Bright Morning';
+    final difficulty =
+        _difficulty ?? alarm?.challengeDifficulty ?? settings.challengeDifficulty;
+    final soundName = _soundName ?? alarm?.soundName ?? settings.alarmSound;
 
     return SafeArea(
       child: Center(

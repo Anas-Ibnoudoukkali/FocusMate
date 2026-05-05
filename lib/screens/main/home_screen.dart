@@ -6,7 +6,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../providers/alarm_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/focus_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../widgets/app_gradient_card.dart';
 import '../../widgets/app_stat_card.dart';
@@ -19,8 +21,11 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider?>();
     final alarm = context.watch<AlarmProvider>();
+    final focus = context.watch<FocusProvider>();
+    final settings = context.watch<SettingsProvider>();
     final tasks = context.watch<TaskProvider>();
     final firstName = (auth?.displayName ?? 'Student').split(' ').first;
+    final dailyGoalProgress = focus.dailyGoalProgress;
 
     return SafeArea(
       child: Center(
@@ -72,7 +77,7 @@ class HomeScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '2h 45m',
+                              _formatSecondsAsHours(focus.todayFocusSeconds),
                               style: AppTextStyles.display.copyWith(
                                 color: Colors.white,
                                 fontSize: 52,
@@ -82,7 +87,7 @@ class HomeScreen extends StatelessWidget {
                             Row(
                               children: [
                                 Text(
-                                  '+ 35m vs yesterday',
+                                  '${focus.currentStreak} day streak',
                                   style: AppTextStyles.body.copyWith(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -158,7 +163,7 @@ class HomeScreen extends StatelessWidget {
                               style: AppTextStyles.body,
                             ),
                             const SizedBox(height: 26),
-                            _ProgressBar(progress: tasks.taskProgress),
+                            _ProgressBar(progress: dailyGoalProgress),
                             const SizedBox(height: 14),
                             RichText(
                               text: TextSpan(
@@ -167,13 +172,18 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: '${tasks.completedTasks}',
+                                    text: _formatSecondsAsHours(
+                                      focus.todayFocusSeconds,
+                                    ),
                                     style: AppTextStyles.cardTitle.copyWith(
                                       color: AppColors.primary,
                                       fontSize: 20,
                                     ),
                                   ),
-                                  TextSpan(text: ' / ${tasks.totalTasks} tasks'),
+                                  TextSpan(
+                                    text:
+                                        ' / ${_formatMinutes(settings.dailyGoalMinutes)}',
+                                  ),
                                 ],
                               ),
                             ),
@@ -181,7 +191,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      _ProgressRing(progress: tasks.taskProgress, size: 116),
+                      _ProgressRing(progress: dailyGoalProgress, size: 116),
                     ],
                   ),
                 ),
@@ -244,9 +254,13 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _StatsOverview(tasks: tasks),
+                _StatsOverview(
+                  tasks: tasks,
+                  focus: focus,
+                  alarm: alarm,
+                ),
                 const SizedBox(height: 18),
-                const _WeeklyStudyCard(),
+                _WeeklyStudyCard(values: focus.weeklyFocusSeconds),
               ],
             ),
           ),
@@ -257,9 +271,15 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _StatsOverview extends StatelessWidget {
-  const _StatsOverview({required this.tasks});
+  const _StatsOverview({
+    required this.tasks,
+    required this.focus,
+    required this.alarm,
+  });
 
   final TaskProvider tasks;
+  final FocusProvider focus;
+  final AlarmProvider alarm;
 
   @override
   Widget build(BuildContext context) {
@@ -271,9 +291,28 @@ class _StatsOverview extends StatelessWidget {
         border: Border.all(color: AppColors.border),
         boxShadow: [AppColors.softShadow],
       ),
-      child: Row(
+      child: Wrap(
+        runSpacing: 18,
         children: [
-          Expanded(
+          _MetricSlot(
+            child: _HomeStatMetric(
+              icon: Icons.schedule_rounded,
+              value: _formatSecondsAsHours(focus.totalFocusSeconds),
+              label: 'Total Focus',
+              color: AppColors.primary,
+              background: AppColors.blueSoft,
+            ),
+          ),
+          _MetricSlot(
+            child: _HomeStatMetric(
+              icon: Icons.today_rounded,
+              value: _formatSecondsAsHours(focus.todayFocusSeconds),
+              label: 'Today',
+              color: AppColors.indigo,
+              background: AppColors.purpleSoft,
+            ),
+          ),
+          _MetricSlot(
             child: _HomeStatMetric(
               icon: Icons.task_alt_rounded,
               value: '${tasks.completedTasks}',
@@ -282,29 +321,38 @@ class _StatsOverview extends StatelessWidget {
               background: AppColors.successSoft,
             ),
           ),
-          const _ThinDivider(),
-          Expanded(
+          _MetricSlot(
             child: _HomeStatMetric(
-              icon: Icons.schedule_rounded,
-              value: _formatMinutes(tasks.completedMinutes),
-              label: 'Study Time',
-              color: AppColors.primary,
-              background: AppColors.blueSoft,
+              icon: Icons.local_fire_department_rounded,
+              value: '${focus.currentStreak}d',
+              label: 'Streak',
+              color: AppColors.warning,
+              background: AppColors.warningSoft,
             ),
           ),
-          const _ThinDivider(),
-          Expanded(
+          _MetricSlot(
             child: _HomeStatMetric(
-              icon: Icons.track_changes_rounded,
-              value: '${(tasks.taskProgress * 100).round()}%',
-              label: 'Progress',
+              icon: Icons.notifications_active_rounded,
+              value: alarm.alarmSuccessLabel,
+              label: 'Alarm Success',
               color: AppColors.indigo,
-              background: AppColors.purpleSoft,
+              background: AppColors.blueSoft,
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _MetricSlot extends StatelessWidget {
+  const _MetricSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(width: 150, child: child);
   }
 }
 
@@ -352,7 +400,9 @@ class _HomeStatMetric extends StatelessWidget {
 }
 
 class _WeeklyStudyCard extends StatelessWidget {
-  const _WeeklyStudyCard();
+  const _WeeklyStudyCard({required this.values});
+
+  final List<int> values;
 
   @override
   Widget build(BuildContext context) {
@@ -369,7 +419,7 @@ class _WeeklyStudyCard extends StatelessWidget {
         children: [
           Text('Weekly Study Time', style: AppTextStyles.cardTitle),
           const SizedBox(height: 18),
-          const _WeeklyBars(),
+          _WeeklyBars(values: values),
         ],
       ),
     );
@@ -377,31 +427,42 @@ class _WeeklyStudyCard extends StatelessWidget {
 }
 
 class _WeeklyBars extends StatelessWidget {
-  const _WeeklyBars();
+  const _WeeklyBars({required this.values});
 
-  static const List<double> _values = [0.48, 0.72, 0.42, 0.82, 0.58, 0.35, 0.44];
   static const List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final List<int> values;
 
   @override
   Widget build(BuildContext context) {
+    final maxValue = values.fold<int>(0, (max, value) => value > max ? value : max);
+
     return SizedBox(
-      height: 132,
+      height: 150,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(_values.length, (index) {
+        children: List.generate(_days.length, (index) {
+          final seconds = index < values.length ? values[index] : 0;
+          final heightFactor = maxValue == 0
+              ? 0.08
+              : (seconds / maxValue).clamp(0.08, 1.0).toDouble();
           return Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                Text(
+                  seconds == 0 ? '0m' : _formatCompactSeconds(seconds),
+                  style: AppTextStyles.body.copyWith(fontSize: 11),
+                ),
+                const SizedBox(height: 6),
                 Expanded(
                   child: Align(
                     alignment: Alignment.bottomCenter,
                     child: FractionallySizedBox(
-                      heightFactor: _values[index],
+                      heightFactor: heightFactor,
                       child: Container(
                         width: 16,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          gradient: AppColors.indigoGradient,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -418,20 +479,6 @@ class _WeeklyBars extends StatelessWidget {
           );
         }),
       ),
-    );
-  }
-}
-
-class _ThinDivider extends StatelessWidget {
-  const _ThinDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 98,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: AppColors.border,
     );
   }
 }
@@ -511,7 +558,7 @@ class _ProgressRing extends StatelessWidget {
                 style: AppTextStyles.title.copyWith(fontSize: 26),
               ),
               Text(
-                'tasks goal',
+                'daily goal',
                 style: AppTextStyles.body.copyWith(fontSize: 12),
               ),
             ],
@@ -616,4 +663,23 @@ String _formatMinutes(int minutes) {
     return '${remainingMinutes}m';
   }
   return '${hours}h ${remainingMinutes.toString().padLeft(2, '0')}m';
+}
+
+String _formatSecondsAsHours(int seconds) {
+  final minutes = seconds ~/ 60;
+  return _formatMinutes(minutes);
+}
+
+String _formatCompactSeconds(int seconds) {
+  final minutes = seconds ~/ 60;
+  final hours = minutes ~/ 60;
+  final remainingMinutes = minutes % 60;
+
+  if (hours == 0) {
+    return '${remainingMinutes}m';
+  }
+  if (remainingMinutes == 0) {
+    return '${hours}h';
+  }
+  return '${hours}h ${remainingMinutes}m';
 }

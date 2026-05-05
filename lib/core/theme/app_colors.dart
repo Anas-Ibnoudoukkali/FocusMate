@@ -4,6 +4,8 @@ class AppColors {
   const AppColors._();
 
   static const Color background = Color(0xFFF8FAFF);
+  static const Color darkBackground = Color(0xFF090D1F);
+  static const Color darkCard = Color(0xFF111832);
   static const Color card = Color(0xFFFFFFFF);
   static const Color cardSoft = Color(0xFFF1F5FF);
   static const Color border = Color(0xFFE7ECF8);

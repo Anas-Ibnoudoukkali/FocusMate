@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../providers/alarm_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/app_primary_button.dart';
 import '../../widgets/section_title.dart';
 
@@ -14,6 +18,8 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider?>();
+    final settings = context.watch<SettingsProvider>();
+    final alarm = context.read<AlarmProvider>();
 
     return SafeArea(
       child: Center(
@@ -87,13 +93,18 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: 14),
                 _SettingsSection(
                   children: [
-                    const _SettingsRow(
+                    _SettingsRow(
                       icon: Icons.timer_outlined,
                       iconColor: AppColors.primary,
                       iconBackground: AppColors.blueSoft,
                       title: 'Default Focus Duration',
                       subtitle: 'Set your default focus time',
-                      trailing: _ValueTrailing(value: '45 min'),
+                      trailing: _MenuTrailing<int>(
+                        value: settings.defaultFocusDuration,
+                        labelBuilder: (value) => '$value min',
+                        values: const [25, 30, 45, 60, 90],
+                        onSelected: settings.updateDefaultFocusDuration,
+                      ),
                     ),
                     const _SettingsDivider(),
                     _SettingsRow(
@@ -102,23 +113,36 @@ class SettingsScreen extends StatelessWidget {
                       iconBackground: AppColors.purpleSoft,
                       title: 'Strict Mode',
                       subtitle: 'Block distractions during focus sessions',
-                      trailing: Switch(value: true, onChanged: (_) {}),
+                      trailing: Switch(
+                        value: settings.strictMode,
+                        onChanged: (value) {
+                          settings.updateStrictMode(value);
+                        },
+                      ),
                     ),
                     const _SettingsDivider(),
-                    const _SettingsRow(
+                    _SettingsRow(
                       icon: Icons.notifications_rounded,
                       iconColor: AppColors.warning,
                       iconBackground: AppColors.warningSoft,
                       title: 'Alarm Sound',
                       subtitle: 'Choose the sound for alarms',
-                      trailing: _ValueTrailing(value: 'Gentle Chime'),
+                      trailing: _MenuTrailing<String>(
+                        value: settings.alarmSound,
+                        labelBuilder: (value) => value,
+                        values: const ['Bright Morning', 'Gentle Chime'],
+                        onSelected: (value) async {
+                          await settings.updateAlarmSound(value);
+                          await alarm.applySettings(soundName: value);
+                        },
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 26),
                 const SectionTitle(title: 'Goals & Challenges'),
                 const SizedBox(height: 14),
-                const _SettingsSection(
+                _SettingsSection(
                   children: [
                     _SettingsRow(
                       icon: Icons.emoji_events_rounded,
@@ -126,7 +150,17 @@ class SettingsScreen extends StatelessWidget {
                       iconBackground: AppColors.successSoft,
                       title: 'Challenge Difficulty',
                       subtitle: 'Adjust daily challenge difficulty',
-                      trailing: _ValueTrailing(value: 'Medium'),
+                      trailing: _MenuTrailing<String>(
+                        value: settings.challengeDifficulty,
+                        labelBuilder: (value) => value,
+                        values: const ['Easy', 'Medium', 'Hard'],
+                        onSelected: (value) async {
+                          await settings.updateChallengeDifficulty(value);
+                          await alarm.applySettings(
+                            challengeDifficulty: value,
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -150,10 +184,25 @@ class SettingsScreen extends StatelessWidget {
                       iconBackground: AppColors.purpleSoft,
                       title: 'Dark Mode',
                       subtitle: 'Use a dark theme across the app',
-                      trailing: Switch(value: false, onChanged: (_) {}),
+                      trailing: Switch(
+                        value: settings.darkMode,
+                        onChanged: (value) {
+                          settings.updateDarkMode(value);
+                        },
+                      ),
                     ),
                   ],
                 ),
+                if (settings.errorMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    settings.errorMessage!,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 22),
                 const _SettingsSection(
                   children: [
@@ -283,6 +332,43 @@ class _ValueTrailing extends StatelessWidget {
           color: AppColors.textSecondary,
         ),
       ],
+    );
+  }
+}
+
+class _MenuTrailing<T> extends StatelessWidget {
+  const _MenuTrailing({
+    required this.value,
+    required this.values,
+    required this.labelBuilder,
+    required this.onSelected,
+  });
+
+  final T value;
+  final List<T> values;
+  final String Function(T value) labelBuilder;
+  final FutureOr<void> Function(T value) onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<T>(
+      initialValue: value,
+      onSelected: (item) {
+        onSelected(item);
+      },
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      itemBuilder: (context) {
+        return values
+            .map(
+              (item) => PopupMenuItem<T>(
+                value: item,
+                child: Text(labelBuilder(item), style: AppTextStyles.body),
+              ),
+            )
+            .toList(growable: false);
+      },
+      child: _ValueTrailing(value: labelBuilder(value)),
     );
   }
 }

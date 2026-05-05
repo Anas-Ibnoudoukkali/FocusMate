@@ -9,6 +9,7 @@ class AlarmStorageService {
       : _preferences = preferences ?? SharedPreferencesAsync();
 
   static const String _alarmKey = 'focus_mate.local_alarm';
+  static const String _statsKey = 'focus_mate.alarm_stats';
 
   final SharedPreferencesAsync _preferences;
 
@@ -31,6 +32,37 @@ class AlarmStorageService {
     return _preferences.setString(_alarmKey, jsonEncode(alarm.toJson()));
   }
 
+  Future<AlarmStatsSnapshot> loadStats() async {
+    final rawStats = await _preferences.getString(_statsKey);
+
+    if (rawStats == null || rawStats.isEmpty) {
+      return const AlarmStatsSnapshot();
+    }
+
+    final decoded = jsonDecode(rawStats);
+    if (decoded is! Map<String, dynamic>) {
+      return const AlarmStatsSnapshot();
+    }
+
+    return AlarmStatsSnapshot(
+      attempts: (decoded['attempts'] as num?)?.toInt() ?? 0,
+      successes: (decoded['successes'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Future<void> saveStats({
+    required int attempts,
+    required int successes,
+  }) {
+    return _preferences.setString(
+      _statsKey,
+      jsonEncode({
+        'attempts': attempts,
+        'successes': successes,
+      }),
+    );
+  }
+
   AlarmModel _defaultAlarm() {
     return const AlarmModel(
       id: 'local-alarm',
@@ -39,4 +71,14 @@ class AlarmStorageService {
       challengeDifficulty: 'Medium',
     );
   }
+}
+
+class AlarmStatsSnapshot {
+  const AlarmStatsSnapshot({
+    this.attempts = 0,
+    this.successes = 0,
+  });
+
+  final int attempts;
+  final int successes;
 }

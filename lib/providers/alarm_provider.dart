@@ -22,6 +22,8 @@ class AlarmProvider extends ChangeNotifier {
   bool _isRinging = false;
   int _leftOperand = 4;
   int _rightOperand = 7;
+  int _alarmAttempts = 0;
+  int _alarmSuccesses = 0;
   String? _errorMessage;
 
   AlarmModel? get alarm => _alarm;
@@ -31,6 +33,12 @@ class AlarmProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String get challengeQuestion => '$_leftOperand + $_rightOperand';
   int get challengeAnswer => _leftOperand + _rightOperand;
+  int get alarmAttempts => _alarmAttempts;
+  int get alarmSuccesses => _alarmSuccesses;
+  double get alarmSuccessRate =>
+      _alarmAttempts == 0 ? 0 : _alarmSuccesses / _alarmAttempts;
+  String get alarmSuccessLabel =>
+      _alarmAttempts == 0 ? 'No data' : '${(alarmSuccessRate * 100).round()}%';
   String get nextAlarmLabel {
     final currentAlarm = _alarm;
     if (currentAlarm == null || !currentAlarm.enabled) {
@@ -63,6 +71,9 @@ class AlarmProvider extends ChangeNotifier {
 
     try {
       _alarm = await _storageService.loadAlarm();
+      final stats = await _storageService.loadStats();
+      _alarmAttempts = stats.attempts;
+      _alarmSuccesses = stats.successes;
       _scheduleForegroundAlarm();
     } on Object {
       _errorMessage = 'Could not load alarm.';
@@ -104,6 +115,28 @@ class AlarmProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> applySettings({
+    String? soundName,
+    String? challengeDifficulty,
+  }) {
+    final currentAlarm = _alarm ??
+        const AlarmModel(
+          id: 'local-alarm',
+          hour: 7,
+          minute: 0,
+          challengeDifficulty: 'Medium',
+        );
+
+    return saveAlarm(
+      hour: currentAlarm.hour,
+      minute: currentAlarm.minute,
+      enabled: currentAlarm.enabled,
+      soundName: soundName ?? currentAlarm.soundName,
+      challengeDifficulty:
+          challengeDifficulty ?? currentAlarm.challengeDifficulty,
+    );
+  }
+
   void triggerAlarmManually() {
     _startRinging();
   }
@@ -116,6 +149,9 @@ class AlarmProvider extends ChangeNotifier {
     }
 
     _stopRinging();
+    _alarmSuccesses += 1;
+    _persistStats();
+    notifyListeners();
     return true;
   }
 
@@ -138,7 +174,9 @@ class AlarmProvider extends ChangeNotifier {
 
     _generateChallenge();
     _isRinging = true;
+    _alarmAttempts += 1;
     _errorMessage = null;
+    _persistStats();
     _playAlarmSound();
     _soundTimer = Timer.periodic(
       const Duration(seconds: 2),
@@ -171,6 +209,13 @@ class AlarmProvider extends ChangeNotifier {
   void _playAlarmSound() {
     SystemSound.play(SystemSoundType.alert);
     HapticFeedback.heavyImpact();
+  }
+
+  Future<void> _persistStats() {
+    return _storageService.saveStats(
+      attempts: _alarmAttempts,
+      successes: _alarmSuccesses,
+    );
   }
 
   @override
