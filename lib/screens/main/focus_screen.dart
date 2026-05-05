@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/task_model.dart';
+import '../../providers/focus_provider.dart';
+import '../../providers/navigation_provider.dart';
+import '../../providers/task_provider.dart';
 
 class FocusScreen extends StatelessWidget {
   const FocusScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final focus = context.watch<FocusProvider>();
+
     return SafeArea(
       child: Center(
         child: SingleChildScrollView(
@@ -22,279 +29,489 @@ class FocusScreen extends StatelessWidget {
               children: [
                 const _FocusHeader(),
                 const SizedBox(height: 26),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: AppColors.blueSoft,
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.code_rounded,
-                          color: AppColors.primary,
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Programming', style: AppTextStyles.cardTitle),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Finish React components',
-                              style: AppTextStyles.body.copyWith(fontSize: 17),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.track_changes_rounded, color: AppColors.primary),
-                    ],
-                  ),
-                ),
+                _SelectedTaskCard(focus: focus),
                 const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      const Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          _Pill(
-                            icon: Icons.timer_outlined,
-                            label: 'Pomodoro',
-                            color: AppColors.primary,
-                            background: AppColors.blueSoft,
-                          ),
-                          _Pill(
-                            icon: Icons.shield_rounded,
-                            label: 'Strict Mode Active',
-                            color: AppColors.success,
-                            background: AppColors.successSoft,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      const _TimerRing(),
-                    ],
-                  ),
-                ),
+                _TimerCard(focus: focus),
                 const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final details = Row(
-                        children: [
-                          Container(
-                            width: 62,
-                            height: 62,
-                            decoration: const BoxDecoration(
-                              color: AppColors.dangerSoft,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.do_not_disturb_alt_rounded,
-                              color: AppColors.danger,
-                              size: 34,
-                            ),
-                          ),
-                          const SizedBox(width: 18),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Distractions', style: AppTextStyles.body),
-                                Text('0', style: AppTextStyles.title),
-                                Text(
-                                  'Keep it up! You\'re doing great.',
-                                  style: AppTextStyles.body,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      );
-
-                      if (constraints.maxWidth < 360) {
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            details,
-                            const SizedBox(height: 16),
-                            const Align(
-                              alignment: Alignment.centerRight,
-                              child: _SoftButton(
-                                label: 'I got distracted',
-                                icon: Icons.close_rounded,
-                                color: AppColors.danger,
-                                background: AppColors.dangerSoft,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-
-                      return Row(
-                        children: [
-                          Expanded(child: details),
-                          const SizedBox(width: 12),
-                          const _SoftButton(
-                            label: 'I got distracted',
-                            icon: Icons.close_rounded,
-                            color: AppColors.danger,
-                            background: AppColors.dangerSoft,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
+                _DistractionCard(focus: focus),
                 const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: const Row(
-                    children: [
-                      Expanded(
-                        child: _ControlButton(
-                          label: 'Pause',
-                          icon: Icons.pause_rounded,
-                          color: AppColors.primary,
-                          background: AppColors.blueSoft,
-                        ),
-                      ),
-                      SizedBox(width: 14),
-                      Expanded(
-                        child: _ControlButton(
-                          label: 'End Session',
-                          icon: Icons.stop_rounded,
-                          color: AppColors.danger,
-                          background: AppColors.dangerSoft,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Session Review (Live)',
-                                  style: AppTextStyles.cardTitle,
-                                ),
-                                const SizedBox(height: 6),
-                                Text('You\'re on track!', style: AppTextStyles.body),
-                              ],
-                            ),
-                          ),
-                          const _Pill(
-                            icon: Icons.trending_up_rounded,
-                            label: 'Great focus',
-                            color: AppColors.success,
-                            background: AppColors.successSoft,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      const Row(
-                        children: [
-                          Expanded(
-                            child: _ReviewMetric(
-                              icon: Icons.do_not_disturb_alt_rounded,
-                              value: '0',
-                              label: 'Distractions',
-                              color: AppColors.danger,
-                              background: AppColors.dangerSoft,
-                            ),
-                          ),
-                          _VerticalDivider(),
-                          Expanded(
-                            child: _ReviewMetric(
-                              icon: Icons.output_rounded,
-                              value: '0',
-                              label: 'Exit Attempts',
-                              color: AppColors.warning,
-                              background: AppColors.warningSoft,
-                            ),
-                          ),
-                          _VerticalDivider(),
-                          Expanded(
-                            child: _ReviewMetric(
-                              icon: Icons.check_circle_outline_rounded,
-                              value: '56%',
-                              label: 'Goal Progress',
-                              color: AppColors.success,
-                              background: AppColors.successSoft,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: const LinearProgressIndicator(
-                          minHeight: 10,
-                          value: 0.56,
-                          backgroundColor: AppColors.blueSoft,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.primary),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text('Keep going - you\'ve got this!', style: AppTextStyles.body),
-                    ],
-                  ),
-                ),
+                _ControlCard(focus: focus),
+                if (focus.isReview) ...[
+                  const SizedBox(height: 18),
+                  _SessionReviewCard(focus: focus),
+                ] else ...[
+                  const SizedBox(height: 18),
+                  _LiveReviewCard(focus: focus),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SelectedTaskCard extends StatelessWidget {
+  const _SelectedTaskCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    final task = focus.selectedTask;
+    final session = focus.lastSession;
+    final title = task?.subject ?? session?.subject ?? 'Select Task';
+    final subtitle = task?.title ?? session?.taskTitle ?? 'Choose a planner task';
+    final canSelect = !focus.isActive && !focus.isReview;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: canSelect ? () => _showTaskPicker(context) : null,
+        child: Ink(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [AppColors.softShadow],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.blueSoft,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  task == null && session == null
+                      ? Icons.add_task_rounded
+                      : Icons.code_rounded,
+                  color: AppColors.primary,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTextStyles.cardTitle),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(fontSize: 17),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                canSelect ? Icons.chevron_right_rounded : Icons.track_changes_rounded,
+                color: AppColors.primary,
+                size: 30,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimerCard extends StatelessWidget {
+  const _TimerCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Column(
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _Pill(
+                icon: Icons.timer_outlined,
+                label: _statusLabel(focus),
+                color: AppColors.primary,
+                background: AppColors.blueSoft,
+              ),
+              const _Pill(
+                icon: Icons.shield_rounded,
+                label: 'Strict Mode Active',
+                color: AppColors.success,
+                background: AppColors.successSoft,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _TimerRing(focus: focus),
+        ],
+      ),
+    );
+  }
+}
+
+class _DistractionCard extends StatelessWidget {
+  const _DistractionCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final details = Row(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: const BoxDecoration(
+                  color: AppColors.dangerSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.do_not_disturb_alt_rounded,
+                  color: AppColors.danger,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Distractions', style: AppTextStyles.body),
+                    Text('${focus.distractions}', style: AppTextStyles.title),
+                    Text(
+                      focus.distractions == 0
+                          ? 'Keep it up! You\'re doing great.'
+                          : 'Logged. Refocus and continue.',
+                      style: AppTextStyles.body,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+
+          final button = _SoftActionButton(
+            label: 'I got distracted',
+            icon: Icons.close_rounded,
+            color: AppColors.danger,
+            background: AppColors.dangerSoft,
+            onTap: focus.isActive ? focus.addDistraction : null,
+          );
+
+          if (constraints.maxWidth < 360) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                details,
+                const SizedBox(height: 16),
+                Align(alignment: Alignment.centerRight, child: button),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: details),
+              const SizedBox(width: 12),
+              button,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ControlCard extends StatelessWidget {
+  const _ControlCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildPrimaryControl(context)),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _ControlButton(
+              label: focus.isReview ? 'Planner' : 'End Session',
+              icon: focus.isReview ? Icons.calendar_month_rounded : Icons.stop_rounded,
+              color: focus.isReview ? AppColors.primary : AppColors.danger,
+              background: focus.isReview ? AppColors.blueSoft : AppColors.dangerSoft,
+              onTap: focus.isReview
+                  ? () => context
+                      .read<NavigationProvider>()
+                      .setSection(AppSection.planner)
+                  : focus.isActive
+                      ? () => focus.finishSession()
+                      : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryControl(BuildContext context) {
+    if (focus.isReview) {
+      return _ControlButton(
+        label: 'New Session',
+        icon: Icons.refresh_rounded,
+        color: AppColors.primary,
+        background: AppColors.blueSoft,
+        onTap: focus.clearReview,
+      );
+    }
+
+    if (focus.isRunning) {
+      return _ControlButton(
+        label: 'Pause',
+        icon: Icons.pause_rounded,
+        color: AppColors.primary,
+        background: AppColors.blueSoft,
+        onTap: focus.pause,
+      );
+    }
+
+    if (focus.isPaused) {
+      return _ControlButton(
+        label: 'Resume',
+        icon: Icons.play_arrow_rounded,
+        color: AppColors.primary,
+        background: AppColors.blueSoft,
+        onTap: focus.resume,
+      );
+    }
+
+    return _ControlButton(
+      label: 'Start Focus',
+      icon: Icons.play_arrow_rounded,
+      color: AppColors.primary,
+      background: AppColors.blueSoft,
+      onTap: focus.hasSelectedTask ? focus.startSelectedTask : null,
+    );
+  }
+}
+
+class _LiveReviewCard extends StatelessWidget {
+  const _LiveReviewCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = focus.progress;
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Session Review (Live)', style: AppTextStyles.cardTitle),
+                    const SizedBox(height: 6),
+                    Text(_liveMessage(focus), style: AppTextStyles.body),
+                  ],
+                ),
+              ),
+              _Pill(
+                icon: Icons.trending_up_rounded,
+                label: focus.isActive ? 'In progress' : 'Ready',
+                color: AppColors.success,
+                background: AppColors.successSoft,
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.do_not_disturb_alt_rounded,
+                  value: '${focus.distractions}',
+                  label: 'Distractions',
+                  color: AppColors.danger,
+                  background: AppColors.dangerSoft,
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.output_rounded,
+                  value: '${focus.exitAttempts}',
+                  label: 'Exit Attempts',
+                  color: AppColors.warning,
+                  background: AppColors.warningSoft,
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.check_circle_outline_rounded,
+                  value: '${(progress * 100).round()}%',
+                  label: 'Goal Progress',
+                  color: AppColors.success,
+                  background: AppColors.successSoft,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: progress,
+              backgroundColor: AppColors.blueSoft,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text('Keep going - you\'ve got this!', style: AppTextStyles.body),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionReviewCard extends StatelessWidget {
+  const _SessionReviewCard({required this.focus});
+
+  final FocusProvider focus;
+
+  @override
+  Widget build(BuildContext context) {
+    final session = focus.lastSession;
+
+    if (session == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Session Saved', style: AppTextStyles.cardTitle),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Linked task marked completed.',
+                      style: AppTextStyles.body,
+                    ),
+                  ],
+                ),
+              ),
+              const _Pill(
+                icon: Icons.check_circle_outline_rounded,
+                label: 'Done',
+                color: AppColors.success,
+                background: AppColors.successSoft,
+              ),
+            ],
+          ),
+          const SizedBox(height: 22),
+          Row(
+            children: [
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.timer_outlined,
+                  value: _formatElapsed(session.elapsedSeconds),
+                  label: 'Focused',
+                  color: AppColors.primary,
+                  background: AppColors.blueSoft,
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.do_not_disturb_alt_rounded,
+                  value: '${session.distractions}',
+                  label: 'Distractions',
+                  color: AppColors.danger,
+                  background: AppColors.dangerSoft,
+                ),
+              ),
+              const _VerticalDivider(),
+              Expanded(
+                child: _ReviewMetric(
+                  icon: Icons.task_alt_rounded,
+                  value: 'Saved',
+                  label: 'Session',
+                  color: AppColors.success,
+                  background: AppColors.successSoft,
+                ),
+              ),
+            ],
+          ),
+          if (focus.errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              focus.errorMessage!,
+              style: AppTextStyles.body.copyWith(color: AppColors.danger),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -375,10 +592,7 @@ class _Pill extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 18),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTextStyles.label.copyWith(color: color),
-          ),
+          Text(label, style: AppTextStyles.label.copyWith(color: color)),
         ],
       ),
     );
@@ -386,7 +600,9 @@ class _Pill extends StatelessWidget {
 }
 
 class _TimerRing extends StatelessWidget {
-  const _TimerRing();
+  const _TimerRing({required this.focus});
+
+  final FocusProvider focus;
 
   @override
   Widget build(BuildContext context) {
@@ -404,7 +620,7 @@ class _TimerRing extends StatelessWidget {
                 width: size,
                 height: size,
                 child: CircularProgressIndicator(
-                  value: 0.74,
+                  value: focus.progress,
                   strokeWidth: 14,
                   strokeCap: StrokeCap.round,
                   backgroundColor: AppColors.blueSoft,
@@ -421,12 +637,12 @@ class _TimerRing extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '18:42',
+                    focus.formattedRemaining,
                     style: AppTextStyles.display.copyWith(fontSize: 52),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'remaining',
+                    focus.isReview ? 'completed' : 'remaining',
                     style: AppTextStyles.body.copyWith(fontSize: 16),
                   ),
                   const SizedBox(height: 16),
@@ -437,7 +653,12 @@ class _TimerRing extends StatelessWidget {
                       color: AppColors.blueSoft,
                       borderRadius: BorderRadius.circular(999),
                     ),
-                    child: Text('25m session', style: AppTextStyles.label),
+                    child: Text(
+                      focus.hasSelectedTask
+                          ? focus.formattedDuration
+                          : 'Select task',
+                      style: AppTextStyles.label,
+                    ),
                   ),
                 ],
               ),
@@ -449,37 +670,43 @@ class _TimerRing extends StatelessWidget {
   }
 }
 
-class _SoftButton extends StatelessWidget {
-  const _SoftButton({
+class _SoftActionButton extends StatelessWidget {
+  const _SoftActionButton({
     required this.label,
     required this.icon,
     required this.color,
     required this.background,
+    this.onTap,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final Color background;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: background,
+    return Opacity(
+      opacity: onTap == null ? 0.52 : 1,
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: AppTextStyles.label.copyWith(color: color),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 8),
+              Text(label, style: AppTextStyles.label.copyWith(color: color)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -491,43 +718,52 @@ class _ControlButton extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.background,
+    this.onTap,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final Color background;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 58,
-      decoration: BoxDecoration(
-        color: background,
+    return Opacity(
+      opacity: onTap == null ? 0.52 : 1,
+      child: InkWell(
         borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.75),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
+        onTap: onTap,
+        child: Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(width: 10),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.cardTitle.copyWith(color: color),
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.cardTitle.copyWith(color: color),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -559,7 +795,12 @@ class _ReviewMetric extends StatelessWidget {
           child: Icon(icon, color: color, size: 24),
         ),
         const SizedBox(height: 8),
-        Text(value, style: AppTextStyles.title.copyWith(fontSize: 24)),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.title.copyWith(fontSize: 20),
+        ),
         const SizedBox(height: 3),
         Text(
           label,
@@ -583,4 +824,145 @@ class _VerticalDivider extends StatelessWidget {
       color: AppColors.border,
     );
   }
+}
+
+class _TaskPickerSheet extends StatelessWidget {
+  const _TaskPickerSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final tasks = context
+        .watch<TaskProvider>()
+        .tasks
+        .where((task) => !task.isCompleted)
+        .toList();
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 18,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('Select Task', style: AppTextStyles.title),
+          const SizedBox(height: 6),
+          Text('Pick a planner task to focus on.', style: AppTextStyles.body),
+          const SizedBox(height: 18),
+          if (tasks.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28),
+              child: Center(
+                child: Text(
+                  'No open tasks. Add one in Planner first.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body,
+                ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: tasks.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(color: AppColors.border),
+                itemBuilder: (context, index) {
+                  final task = tasks[index];
+
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.blueSoft,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.task_alt_rounded,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    title: Text(task.title, style: AppTextStyles.cardTitle),
+                    subtitle: Text(
+                      '${task.subject} - ${task.estimatedMinutes} min',
+                      style: AppTextStyles.body,
+                    ),
+                    onTap: () {
+                      context.read<FocusProvider>().selectTask(task);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showTaskPicker(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: AppColors.card,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    builder: (_) => const _TaskPickerSheet(),
+  );
+}
+
+String _statusLabel(FocusProvider focus) {
+  switch (focus.status) {
+    case FocusSessionStatus.running:
+      return 'Running';
+    case FocusSessionStatus.paused:
+      return 'Paused';
+    case FocusSessionStatus.review:
+      return 'Review';
+    case FocusSessionStatus.idle:
+      return focus.hasSelectedTask ? 'Ready' : 'Select task';
+  }
+}
+
+String _liveMessage(FocusProvider focus) {
+  if (!focus.hasSelectedTask) {
+    return 'Select a task to begin.';
+  }
+  if (focus.isPaused) {
+    return 'Paused. Resume when ready.';
+  }
+  if (focus.isRunning) {
+    return 'You\'re on track!';
+  }
+  return 'Ready to start.';
+}
+
+String _formatElapsed(int seconds) {
+  final minutes = seconds ~/ 60;
+  final remainingSeconds = seconds % 60;
+
+  if (minutes == 0) {
+    return '${remainingSeconds}s';
+  }
+  return '${minutes}m';
 }

@@ -13,7 +13,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = context.watch<AuthProvider?>();
 
     return SafeArea(
       child: Center(
@@ -58,14 +58,14 @@ class SettingsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              auth.displayName,
+                              auth?.displayName ?? 'Guest Student',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.title.copyWith(fontSize: 22),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              auth.email,
+                              auth?.email ?? 'Auth will be enabled later',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: AppTextStyles.body.copyWith(fontSize: 16),
@@ -173,10 +173,10 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 AppPrimaryButton(
-                  label: 'Logout',
+                  label: auth == null ? 'Login Disabled For Now' : 'Logout',
                   icon: Icons.logout_rounded,
                   isDestructive: true,
-                  onPressed: () => context.read<AuthProvider>().signOut(),
+                  onPressed: auth == null ? null : () => auth.signOut(),
                 ),
               ],
             ),

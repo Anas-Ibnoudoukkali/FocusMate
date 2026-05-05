@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../providers/alarm_provider.dart';
 import '../../widgets/app_gradient_card.dart';
 import '../../widgets/app_primary_button.dart';
 import '../../widgets/section_title.dart';
 
-class AlarmScreen extends StatelessWidget {
+class AlarmScreen extends StatefulWidget {
   const AlarmScreen({super.key});
 
   @override
+  State<AlarmScreen> createState() => _AlarmScreenState();
+}
+
+class _AlarmScreenState extends State<AlarmScreen> {
+  TimeOfDay? _selectedTime;
+  bool? _enabled;
+  String? _difficulty;
+  String? _soundName;
+
+  @override
   Widget build(BuildContext context) {
+    final alarmProvider = context.watch<AlarmProvider>();
+    final alarm = alarmProvider.alarm;
+    final time = _selectedTime ??
+        TimeOfDay(hour: alarm?.hour ?? 7, minute: alarm?.minute ?? 0);
+    final enabled = _enabled ?? alarm?.enabled ?? true;
+    final difficulty = _difficulty ?? alarm?.challengeDifficulty ?? 'Medium';
+    final soundName = _soundName ?? alarm?.soundName ?? 'Bright Morning';
+
     return SafeArea(
       child: Center(
         child: SingleChildScrollView(
@@ -25,160 +45,66 @@ class AlarmScreen extends StatelessWidget {
               children: [
                 const _AlarmHeader(),
                 const SizedBox(height: 28),
-                const AppGradientCard(child: _AlarmHeroContent()),
+                AppGradientCard(
+                  child: _AlarmHeroContent(
+                    time: time,
+                    enabled: enabled,
+                    onTimeTap: _pickTime,
+                    onEnabledChanged: (value) {
+                      setState(() => _enabled = value);
+                    },
+                  ),
+                ),
                 const SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      const _OptionRow(
-                        icon: Icons.music_note_rounded,
-                        title: 'Alarm Sound',
-                        subtitle: 'Bright Morning',
-                        iconColor: AppColors.indigo,
-                        iconBackground: AppColors.purpleSoft,
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary,
-                          size: 32,
-                        ),
-                      ),
-                      const _RowDivider(),
-                      const _OptionRow(
-                        icon: Icons.bar_chart_rounded,
-                        title: 'Challenge Difficulty',
-                        subtitle: 'Medium',
-                        iconColor: AppColors.primary,
-                        iconBackground: AppColors.blueSoft,
-                        trailing: Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary,
-                          size: 32,
-                        ),
-                      ),
-                      const _RowDivider(),
-                      _OptionRow(
-                        icon: Icons.notifications_active_rounded,
-                        title: 'Snooze',
-                        subtitle: '5 minutes',
-                        iconColor: AppColors.primary,
-                        iconBackground: AppColors.blueSoft,
-                        trailing: Switch(value: true, onChanged: (_) {}),
-                      ),
-                    ],
-                  ),
+                _SettingsCard(
+                  soundName: soundName,
+                  difficulty: difficulty,
+                  onSoundChanged: (value) {
+                    setState(() => _soundName = value);
+                  },
+                  onDifficultyChanged: (value) {
+                    setState(() => _difficulty = value);
+                  },
                 ),
                 const SizedBox(height: 24),
                 const SectionTitle(
                   title: 'Wake-up Challenge',
-                  subtitle: 'Choose one or more challenges to turn off the alarm.',
+                  subtitle: 'Solve the challenge to turn off the alarm.',
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: AppColors.border),
-                    boxShadow: [AppColors.softShadow],
-                  ),
-                  child: const Column(
-                    children: [
-                      _ChallengeTile(
-                        selected: true,
-                        icon: Icons.calculate_rounded,
-                        title: 'Solve 3 math questions',
-                        subtitle: 'Answer 3 random math questions',
-                        difficulty: 'Medium',
-                        iconBackground: AppColors.indigo,
-                      ),
-                      _RowDivider(),
-                      _ChallengeTile(
-                        selected: true,
-                        icon: Icons.lock_rounded,
-                        title: 'Type verification code',
-                        subtitle: 'Enter the shown code correctly',
-                        difficulty: 'Easy',
-                        iconBackground: AppColors.violet,
-                      ),
-                      _RowDivider(),
-                      _ChallengeTile(
-                        selected: false,
-                        icon: Icons.apps_rounded,
-                        title: 'Remember pattern',
-                        subtitle: 'Repeat the pattern shown',
-                        difficulty: 'Hard',
-                        iconBackground: AppColors.success,
-                      ),
-                    ],
-                  ),
-                ),
+                const _ChallengeCard(),
                 const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.14),
-                        AppColors.indigo.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
-                          gradient: AppColors.indigoGradient,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: const Icon(
-                          Icons.verified_rounded,
-                          color: Colors.white,
-                          size: 42,
-                        ),
-                      ),
-                      const SizedBox(width: 18),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Challenge-based Wake-up',
-                              style: AppTextStyles.cardTitle.copyWith(
-                                color: AppColors.primary,
-                                fontSize: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'The alarm stops after the wake-up challenge is completed.',
-                              style: AppTextStyles.body,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: AppColors.textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
+                const _ChallengeInfoCard(),
                 const SizedBox(height: 22),
                 AppPrimaryButton(
                   label: 'Save Alarm',
-                  icon: Icons.lock_open_rounded,
-                  onPressed: () {},
+                  icon: Icons.save_rounded,
+                  isLoading: alarmProvider.isSaving,
+                  onPressed: () => _saveAlarm(
+                    alarmProvider,
+                    time,
+                    enabled,
+                    soundName,
+                    difficulty,
+                  ),
                 ),
+                const SizedBox(height: 14),
+                AppPrimaryButton(
+                  label: 'Test Alarm',
+                  icon: Icons.notifications_active_rounded,
+                  isOutlined: true,
+                  onPressed: alarmProvider.triggerAlarmManually,
+                ),
+                if (alarmProvider.errorMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    alarmProvider.errorMessage!,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.danger,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -186,10 +112,63 @@ class AlarmScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _pickTime() async {
+    final currentAlarm = context.read<AlarmProvider>().alarm;
+    final initialTime = _selectedTime ??
+        TimeOfDay(
+          hour: currentAlarm?.hour ?? 7,
+          minute: currentAlarm?.minute ?? 0,
+        );
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+                  primary: AppColors.primary,
+                ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (pickedTime != null) {
+      setState(() => _selectedTime = pickedTime);
+    }
+  }
+
+  Future<void> _saveAlarm(
+    AlarmProvider alarmProvider,
+    TimeOfDay time,
+    bool enabled,
+    String soundName,
+    String difficulty,
+  ) {
+    return alarmProvider.saveAlarm(
+      hour: time.hour,
+      minute: time.minute,
+      enabled: enabled,
+      soundName: soundName,
+      challengeDifficulty: difficulty,
+    );
+  }
 }
 
 class _AlarmHeroContent extends StatelessWidget {
-  const _AlarmHeroContent();
+  const _AlarmHeroContent({
+    required this.time,
+    required this.enabled,
+    required this.onTimeTap,
+    required this.onEnabledChanged,
+  });
+
+  final TimeOfDay time;
+  final bool enabled;
+  final VoidCallback onTimeTap;
+  final ValueChanged<bool> onEnabledChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -204,8 +183,14 @@ class _AlarmHeroContent extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Expanded(child: _AlarmTimeBlock(compact: true)),
-                  Switch(value: true, onChanged: (_) {}),
+                  Expanded(
+                    child: _AlarmTimeBlock(
+                      time: time,
+                      compact: true,
+                      onTimeTap: onTimeTap,
+                    ),
+                  ),
+                  Switch(value: enabled, onChanged: onEnabledChanged),
                 ],
               ),
               const SizedBox(height: 20),
@@ -220,11 +205,13 @@ class _AlarmHeroContent extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Expanded(child: _AlarmTimeBlock()),
+            Expanded(
+              child: _AlarmTimeBlock(time: time, onTimeTap: onTimeTap),
+            ),
             const SizedBox(width: 18),
             Column(
               children: [
-                Switch(value: true, onChanged: (_) {}),
+                Switch(value: enabled, onChanged: onEnabledChanged),
                 const SizedBox(height: 22),
                 _AlarmIllustration(size: 108),
               ],
@@ -237,109 +224,247 @@ class _AlarmHeroContent extends StatelessWidget {
 }
 
 class _AlarmTimeBlock extends StatelessWidget {
-  const _AlarmTimeBlock({this.compact = false});
+  const _AlarmTimeBlock({
+    required this.time,
+    required this.onTimeTap,
+    this.compact = false,
+  });
 
+  final TimeOfDay time;
+  final VoidCallback onTimeTap;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: '07:00',
-                style: AppTextStyles.display.copyWith(
-                  color: Colors.white,
-                  fontSize: compact ? 48 : 58,
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTimeTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '${hour.toString().padLeft(2, '0')}:'
+                      '${time.minute.toString().padLeft(2, '0')}',
+                  style: AppTextStyles.display.copyWith(
+                    color: Colors.white,
+                    fontSize: compact ? 48 : 58,
+                  ),
                 ),
+                TextSpan(
+                  text: ' $period',
+                  style: AppTextStyles.title.copyWith(
+                    color: Colors.white,
+                    fontSize: compact ? 20 : 24,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          const _AlarmDays(),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Icon(
+                Icons.touch_app_rounded,
+                color: Colors.white.withValues(alpha: 0.9),
               ),
-              TextSpan(
-                text: ' AM',
-                style: AppTextStyles.title.copyWith(
-                  color: Colors.white,
-                  fontSize: compact ? 20 : 24,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  'Tap time to edit',
+                  style: AppTextStyles.body.copyWith(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 18),
-        const _AlarmDays(),
-        const SizedBox(height: 18),
-        const _RepeatLabel(),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _AlarmDays extends StatelessWidget {
-  const _AlarmDays();
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({
+    required this.soundName,
+    required this.difficulty,
+    required this.onSoundChanged,
+    required this.onDifficultyChanged,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    return const Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _DayChip(label: 'S', active: false),
-        _DayChip(label: 'M', active: true),
-        _DayChip(label: 'T', active: true),
-        _DayChip(label: 'W', active: true),
-        _DayChip(label: 'T', active: true),
-        _DayChip(label: 'F', active: true),
-        _DayChip(label: 'S', active: false),
-      ],
-    );
-  }
-}
-
-class _RepeatLabel extends StatelessWidget {
-  const _RepeatLabel();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          Icons.repeat_rounded,
-          color: Colors.white.withValues(alpha: 0.9),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            'Repeats every Mon - Fri',
-            style: AppTextStyles.body.copyWith(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AlarmIllustration extends StatelessWidget {
-  const _AlarmIllustration({required this.size});
-
-  final double size;
+  final String soundName;
+  final String difficulty;
+  final ValueChanged<String> onSoundChanged;
+  final ValueChanged<String> onDifficultyChanged;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: size,
-      height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.13),
-        shape: BoxShape.circle,
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
       ),
-      child: Icon(
-        Icons.alarm_rounded,
-        color: Colors.white,
-        size: size * 0.66,
+      child: Column(
+        children: [
+          _OptionRow(
+            icon: Icons.music_note_rounded,
+            title: 'Alarm Sound',
+            subtitle: soundName,
+            iconColor: AppColors.indigo,
+            iconBackground: AppColors.purpleSoft,
+            trailing: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: soundName,
+                borderRadius: BorderRadius.circular(18),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'Bright Morning',
+                    child: Text('Bright Morning'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'Gentle Chime',
+                    child: Text('Gentle Chime'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    onSoundChanged(value);
+                  }
+                },
+              ),
+            ),
+          ),
+          const _RowDivider(),
+          _OptionRow(
+            icon: Icons.bar_chart_rounded,
+            title: 'Challenge Difficulty',
+            subtitle: difficulty,
+            iconColor: AppColors.primary,
+            iconBackground: AppColors.blueSoft,
+            trailing: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: difficulty,
+                borderRadius: BorderRadius.circular(18),
+                items: const [
+                  DropdownMenuItem(value: 'Easy', child: Text('Easy')),
+                  DropdownMenuItem(value: 'Medium', child: Text('Medium')),
+                  DropdownMenuItem(value: 'Hard', child: Text('Hard')),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    onDifficultyChanged(value);
+                  }
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeCard extends StatelessWidget {
+  const _ChallengeCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: const Column(
+        children: [
+          _ChallengeTile(
+            selected: true,
+            icon: Icons.calculate_rounded,
+            title: 'Solve math challenge',
+            subtitle: 'Answer the generated question correctly',
+            difficulty: 'Required',
+            iconBackground: AppColors.indigo,
+          ),
+          _RowDivider(),
+          _ChallengeTile(
+            selected: false,
+            icon: Icons.lock_rounded,
+            title: 'More challenges later',
+            subtitle: 'Code and pattern challenges are planned',
+            difficulty: 'Soon',
+            iconBackground: AppColors.violet,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChallengeInfoCard extends StatelessWidget {
+  const _ChallengeInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.14),
+            AppColors.indigo.withValues(alpha: 0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              gradient: AppColors.indigoGradient,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(
+              Icons.verified_rounded,
+              color: Colors.white,
+              size: 42,
+            ),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Challenge-based Wake-up',
+                  style: AppTextStyles.cardTitle.copyWith(
+                    color: AppColors.primary,
+                    fontSize: 20,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'The alarm only stops after the math challenge is solved.',
+                  style: AppTextStyles.body,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -361,7 +486,10 @@ class _AlarmHeader extends StatelessWidget {
             border: Border.all(color: AppColors.border),
             boxShadow: [AppColors.softShadow],
           ),
-          child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary),
+          child: const Icon(
+            Icons.notifications_active_rounded,
+            color: AppColors.primary,
+          ),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -401,11 +529,52 @@ class _Avatar extends StatelessWidget {
   }
 }
 
+class _AlarmIllustration extends StatelessWidget {
+  const _AlarmIllustration({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.13),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.alarm_rounded,
+        color: Colors.white,
+        size: size * 0.66,
+      ),
+    );
+  }
+}
+
+class _AlarmDays extends StatelessWidget {
+  const _AlarmDays();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _DayChip(label: 'S', active: false),
+        _DayChip(label: 'M', active: true),
+        _DayChip(label: 'T', active: true),
+        _DayChip(label: 'W', active: true),
+        _DayChip(label: 'T', active: true),
+        _DayChip(label: 'F', active: true),
+        _DayChip(label: 'S', active: false),
+      ],
+    );
+  }
+}
+
 class _DayChip extends StatelessWidget {
-  const _DayChip({
-    required this.label,
-    required this.active,
-  });
+  const _DayChip({required this.label, required this.active});
 
   final String label;
   final bool active;
@@ -476,7 +645,8 @@ class _OptionRow extends StatelessWidget {
               ],
             ),
           ),
-          trailing,
+          const SizedBox(width: 10),
+          Flexible(child: trailing),
         ],
       ),
     );
@@ -551,8 +721,6 @@ class _ChallengeTile extends StatelessWidget {
             ),
             child: Text(difficulty, style: AppTextStyles.label),
           ),
-          const SizedBox(width: 12),
-          const Icon(Icons.drag_handle_rounded, color: AppColors.textSecondary),
         ],
       ),
     );

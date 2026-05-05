@@ -4,18 +4,23 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../providers/alarm_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/task_provider.dart';
 import '../../widgets/app_gradient_card.dart';
 import '../../widgets/app_stat_card.dart';
+import '../../widgets/section_title.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final firstName = auth.displayName.split(' ').first;
+    final auth = context.watch<AuthProvider?>();
+    final alarm = context.watch<AlarmProvider>();
+    final tasks = context.watch<TaskProvider>();
+    final firstName = (auth?.displayName ?? 'Student').split(' ').first;
 
     return SafeArea(
       child: Center(
@@ -114,8 +119,8 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 AppStatCard(
                   title: 'Next Alarm',
-                  value: '07:00 AM',
-                  subtitle: 'Tomorrow',
+                  value: alarm.nextAlarmLabel,
+                  subtitle: alarm.nextAlarmSubtitle,
                   icon: Icons.notifications_active_rounded,
                   iconColor: AppColors.indigo,
                   iconBackground: AppColors.purpleSoft,
@@ -153,7 +158,7 @@ class HomeScreen extends StatelessWidget {
                               style: AppTextStyles.body,
                             ),
                             const SizedBox(height: 26),
-                            const _ProgressBar(progress: 0.68),
+                            _ProgressBar(progress: tasks.taskProgress),
                             const SizedBox(height: 14),
                             RichText(
                               text: TextSpan(
@@ -162,13 +167,13 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: '2h 45m',
+                                    text: '${tasks.completedTasks}',
                                     style: AppTextStyles.cardTitle.copyWith(
                                       color: AppColors.primary,
                                       fontSize: 20,
                                     ),
                                   ),
-                                  const TextSpan(text: ' / 4h'),
+                                  TextSpan(text: ' / ${tasks.totalTasks} tasks'),
                                 ],
                               ),
                             ),
@@ -176,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      const _ProgressRing(progress: 0.68, size: 116),
+                      _ProgressRing(progress: tasks.taskProgress, size: 116),
                     ],
                   ),
                 ),
@@ -220,22 +225,213 @@ class HomeScreen extends StatelessWidget {
                           .setSection(AppSection.alarm),
                     ),
                     _QuickActionCard(
-                      title: 'Dashboard',
-                      subtitle: 'View insights',
+                      title: 'Test Alarm',
+                      subtitle: 'Trigger wake-up',
                       icon: Icons.bar_chart_rounded,
                       iconColor: AppColors.success,
                       background: AppColors.successSoft,
-                      onTap: () => context
-                          .read<NavigationProvider>()
-                          .setSection(AppSection.dashboard),
+                      onTap: alarm.triggerAlarmManually,
                     ),
                   ],
                 ),
+                const SizedBox(height: 24),
+                SectionTitle(
+                  title: 'Stats',
+                  subtitle: 'Combined from your planner and focus work.',
+                  trailing: Text(
+                    'Today',
+                    style: AppTextStyles.label.copyWith(fontSize: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _StatsOverview(tasks: tasks),
+                const SizedBox(height: 18),
+                const _WeeklyStudyCard(),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StatsOverview extends StatelessWidget {
+  const _StatsOverview({required this.tasks});
+
+  final TaskProvider tasks;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _HomeStatMetric(
+              icon: Icons.task_alt_rounded,
+              value: '${tasks.completedTasks}',
+              label: 'Tasks Done',
+              color: AppColors.success,
+              background: AppColors.successSoft,
+            ),
+          ),
+          const _ThinDivider(),
+          Expanded(
+            child: _HomeStatMetric(
+              icon: Icons.schedule_rounded,
+              value: _formatMinutes(tasks.completedMinutes),
+              label: 'Study Time',
+              color: AppColors.primary,
+              background: AppColors.blueSoft,
+            ),
+          ),
+          const _ThinDivider(),
+          Expanded(
+            child: _HomeStatMetric(
+              icon: Icons.track_changes_rounded,
+              value: '${(tasks.taskProgress * 100).round()}%',
+              label: 'Progress',
+              color: AppColors.indigo,
+              background: AppColors.purpleSoft,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeStatMetric extends StatelessWidget {
+  const _HomeStatMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+    required this.background,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 26),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTextStyles.title.copyWith(fontSize: 22),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: AppTextStyles.body.copyWith(fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeeklyStudyCard extends StatelessWidget {
+  const _WeeklyStudyCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [AppColors.softShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Weekly Study Time', style: AppTextStyles.cardTitle),
+          const SizedBox(height: 18),
+          const _WeeklyBars(),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeeklyBars extends StatelessWidget {
+  const _WeeklyBars();
+
+  static const List<double> _values = [0.48, 0.72, 0.42, 0.82, 0.58, 0.35, 0.44];
+  static const List<String> _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 132,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List.generate(_values.length, (index) {
+          return Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: FractionallySizedBox(
+                      heightFactor: _values[index],
+                      child: Container(
+                        width: 16,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _days[index],
+                  style: AppTextStyles.body.copyWith(fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _ThinDivider extends StatelessWidget {
+  const _ThinDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      height: 98,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      color: AppColors.border,
     );
   }
 }
@@ -314,7 +510,10 @@ class _ProgressRing extends StatelessWidget {
                 '${(progress * 100).round()}%',
                 style: AppTextStyles.title.copyWith(fontSize: 26),
               ),
-              Text('of 4h goal', style: AppTextStyles.body.copyWith(fontSize: 12)),
+              Text(
+                'tasks goal',
+                style: AppTextStyles.body.copyWith(fontSize: 12),
+              ),
             ],
           ),
         ],
@@ -407,4 +606,14 @@ class _QuickActionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatMinutes(int minutes) {
+  final hours = minutes ~/ 60;
+  final remainingMinutes = minutes % 60;
+
+  if (hours == 0) {
+    return '${remainingMinutes}m';
+  }
+  return '${hours}h ${remainingMinutes.toString().padLeft(2, '0')}m';
 }

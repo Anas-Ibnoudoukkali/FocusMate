@@ -34,11 +34,6 @@ class AppBottomNavBar extends StatelessWidget {
       inactiveIcon: Icons.notifications_none_rounded,
     ),
     _BottomNavItem(
-      label: 'Stats',
-      activeIcon: Icons.pie_chart_rounded,
-      inactiveIcon: Icons.pie_chart_outline_rounded,
-    ),
-    _BottomNavItem(
       label: 'Settings',
       activeIcon: Icons.settings_rounded,
       inactiveIcon: Icons.settings_outlined,
@@ -50,9 +45,9 @@ class AppBottomNavBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        height: 94,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        height: 88,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(30),
@@ -110,8 +105,8 @@ class _StandardNavItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Icon(active ? item.activeIcon : item.inactiveIcon, color: color, size: 27),
-        const SizedBox(height: 5),
+        Icon(active ? item.activeIcon : item.inactiveIcon, color: color, size: 25),
+        const SizedBox(height: 4),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
@@ -142,14 +137,14 @@ class _FocusNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Transform.translate(
-      offset: const Offset(0, -12),
+      offset: const Offset(0, -8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            width: 58,
-            height: 58,
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
               gradient: AppColors.indigoGradient,
               shape: BoxShape.circle,
@@ -158,10 +153,10 @@ class _FocusNavItem extends StatelessWidget {
             child: Icon(
               active ? item.activeIcon : item.inactiveIcon,
               color: Colors.white,
-              size: 29,
+              size: 27,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(

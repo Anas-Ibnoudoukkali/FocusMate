@@ -5,12 +5,11 @@ enum AppSection {
   planner,
   focus,
   alarm,
-  dashboard,
   settings,
 }
 
 class NavigationProvider extends ChangeNotifier {
-  AppSection _currentSection = AppSection.dashboard;
+  AppSection _currentSection = AppSection.home;
 
   AppSection get currentSection => _currentSection;
   int get currentIndex => AppSection.values.indexOf(_currentSection);
