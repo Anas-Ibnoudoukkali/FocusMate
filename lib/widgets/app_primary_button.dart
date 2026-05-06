@@ -27,6 +27,8 @@ class AppPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dangerSoft = AppColors.dangerSoftFor(context);
+
     final content = AnimatedOpacity(
       duration: const Duration(milliseconds: 180),
       opacity: _disabled ? 0.65 : 1,
@@ -37,7 +39,7 @@ class AppPrimaryButton extends StatelessWidget {
             color: isOutlined
                 ? Colors.transparent
                 : isDestructive
-                    ? AppColors.dangerSoft
+                    ? dangerSoft
                     : null,
             gradient:
                 isOutlined || isDestructive ? null : AppColors.indigoGradient,

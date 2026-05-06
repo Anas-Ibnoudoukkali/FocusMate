@@ -67,6 +67,21 @@ class AuthService {
     return _firebaseAuth.sendPasswordResetEmail(email: email.trim());
   }
 
+  Future<void> updateDisplayName(String name) async {
+    final user = currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-current-user',
+        message: 'No connected user is available.',
+      );
+    }
+
+    final cleanName = name.trim();
+    await user.updateDisplayName(cleanName);
+    await user.reload();
+    await _firestoreService.updateUserProfileName(user.uid, cleanName);
+  }
+
   Future<void> signOut() {
     return _firebaseAuth.signOut();
   }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../models/focus_session_model.dart';
 import '../../providers/alarm_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/focus_provider.dart';
@@ -26,6 +27,7 @@ class HomeScreen extends StatelessWidget {
     final tasks = context.watch<TaskProvider>();
     final firstName = (auth?.displayName ?? 'Student').split(' ').first;
     final dailyGoalProgress = focus.dailyGoalProgress;
+    final isCloudDashboard = auth?.isAuthenticated ?? false;
 
     return SafeArea(
       child: Center(
@@ -50,7 +52,11 @@ class HomeScreen extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const _UserAvatar(),
+                    _UserAvatar(
+                      onTap: () => context
+                          .read<NavigationProvider>()
+                          .setSection(AppSection.settings),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 28),
@@ -247,7 +253,9 @@ class HomeScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 SectionTitle(
                   title: 'Stats',
-                  subtitle: 'Combined from your planner and focus work.',
+                  subtitle: isCloudDashboard
+                      ? 'Synced from your Firebase account data.'
+                      : 'Combined from your local planner and focus work.',
                   trailing: Text(
                     'Today',
                     style: AppTextStyles.label.copyWith(fontSize: 16),
@@ -260,7 +268,15 @@ class HomeScreen extends StatelessWidget {
                   alarm: alarm,
                 ),
                 const SizedBox(height: 18),
+                _DashboardDetailsCard(
+                  tasks: tasks,
+                  focus: focus,
+                  alarm: alarm,
+                ),
+                const SizedBox(height: 18),
                 _WeeklyStudyCard(values: focus.weeklyFocusSeconds),
+                const SizedBox(height: 18),
+                _RecentSessionsCard(sessions: focus.sessions),
               ],
             ),
           ),
@@ -315,7 +331,7 @@ class _StatsOverview extends StatelessWidget {
           _MetricSlot(
             child: _HomeStatMetric(
               icon: Icons.task_alt_rounded,
-              value: '${tasks.completedTasks}',
+              value: tasks.completedTasksLabel,
               label: 'Tasks Done',
               color: AppColors.success,
               background: AppColors.successSoft,
@@ -323,9 +339,9 @@ class _StatsOverview extends StatelessWidget {
           ),
           _MetricSlot(
             child: _HomeStatMetric(
-              icon: Icons.local_fire_department_rounded,
-              value: '${focus.currentStreak}d',
-              label: 'Streak',
+              icon: Icons.check_circle_rounded,
+              value: '${(focus.completionRate * 100).round()}%',
+              label: 'Focus Done',
               color: AppColors.warning,
               background: AppColors.warningSoft,
             ),
@@ -341,6 +357,169 @@ class _StatsOverview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DashboardDetailsCard extends StatelessWidget {
+  const _DashboardDetailsCard({
+    required this.tasks,
+    required this.focus,
+    required this.alarm,
+  });
+
+  final TaskProvider tasks;
+  final FocusProvider focus;
+  final AlarmProvider alarm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardFor(context),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.borderFor(context)),
+        boxShadow: AppColors.softShadowFor(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dashboard Summary',
+            style: AppTextStyles.cardTitle.copyWith(
+              color: AppColors.textPrimaryFor(context),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Live totals from tasks, focus sessions, and alarm activity.',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textSecondaryFor(context),
+            ),
+          ),
+          const SizedBox(height: 18),
+          _SummaryRow(
+            icon: Icons.timer_rounded,
+            title: 'Today focus',
+            value: _formatSecondsAsHours(focus.todayFocusSeconds),
+            subtitle:
+                '${focus.todaySessions} sessions, ${focus.todayDistractions} distractions',
+            color: AppColors.primary,
+            background: AppColors.blueSoft,
+          ),
+          const _DashboardDivider(),
+          _SummaryRow(
+            icon: Icons.insights_rounded,
+            title: 'All focus work',
+            value: _formatSecondsAsHours(focus.totalFocusSeconds),
+            subtitle:
+                '${focus.sessions.length} sessions, ${focus.totalDistractions} distractions',
+            color: AppColors.indigo,
+            background: AppColors.purpleSoft,
+          ),
+          const _DashboardDivider(),
+          _SummaryRow(
+            icon: Icons.assignment_turned_in_rounded,
+            title: 'Planner progress',
+            value: '${(tasks.taskProgress * 100).round()}%',
+            subtitle:
+                '${tasks.completedTasks} done, ${tasks.remainingTasks} remaining',
+            color: AppColors.success,
+            background: AppColors.successSoft,
+          ),
+          const _DashboardDivider(),
+          _SummaryRow(
+            icon: Icons.alarm_on_rounded,
+            title: 'Alarm reliability',
+            value: alarm.alarmSuccessLabel,
+            subtitle:
+                '${alarm.alarmSuccesses} successes from ${alarm.alarmAttempts} attempts',
+            color: AppColors.warning,
+            background: AppColors.warningSoft,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  const _SummaryRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.color,
+    required this.background,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+  final String subtitle;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, color: color, size: 28),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: AppColors.textPrimaryFor(context),
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondaryFor(context),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: AppTextStyles.title.copyWith(
+            color: color,
+            fontSize: 22,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DashboardDivider extends StatelessWidget {
+  const _DashboardDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Divider(height: 1, color: AppColors.borderFor(context)),
     );
   }
 }
@@ -426,6 +605,182 @@ class _WeeklyStudyCard extends StatelessWidget {
   }
 }
 
+class _RecentSessionsCard extends StatelessWidget {
+  const _RecentSessionsCard({required this.sessions});
+
+  final List<FocusSessionModel> sessions;
+
+  @override
+  Widget build(BuildContext context) {
+    final recentSessions = [...sessions]
+      ..sort((a, b) => b.endedAt.compareTo(a.endedAt));
+    final visibleSessions = recentSessions.take(4).toList(growable: false);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardFor(context),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.borderFor(context)),
+        boxShadow: AppColors.softShadowFor(context),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Recent Sessions',
+                  style: AppTextStyles.cardTitle.copyWith(
+                    color: AppColors.textPrimaryFor(context),
+                  ),
+                ),
+              ),
+              _ScoreBadge(score: _averageFocusScore(visibleSessions)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Focus quality based on completion and distractions.',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textSecondaryFor(context),
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (visibleSessions.isEmpty)
+            const _EmptySessionsState()
+          else
+            ...List.generate(visibleSessions.length, (index) {
+              final session = visibleSessions[index];
+
+              return Column(
+                children: [
+                  _SessionTile(session: session),
+                  if (index != visibleSessions.length - 1)
+                    Divider(
+                      height: 22,
+                      color: AppColors.borderFor(context),
+                    ),
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _SessionTile extends StatelessWidget {
+  const _SessionTile({required this.session});
+
+  final FocusSessionModel session;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = _focusScore(session);
+    final statusColor =
+        session.completed ? AppColors.success : AppColors.warning;
+
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            session.completed
+                ? Icons.check_circle_rounded
+                : Icons.pause_circle_filled_rounded,
+            color: statusColor,
+            size: 28,
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                session.taskTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: AppColors.textPrimaryFor(context),
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${session.subject} - '
+                '${_formatCompactSeconds(session.elapsedSeconds)} - '
+                '${session.distractions} distractions',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.textSecondaryFor(context),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _ScoreBadge(score: score),
+      ],
+    );
+  }
+}
+
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = score >= 80
+        ? AppColors.success
+        : score >= 55
+            ? AppColors.warning
+            : AppColors.danger;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$score%',
+        style: AppTextStyles.label.copyWith(color: color),
+      ),
+    );
+  }
+}
+
+class _EmptySessionsState extends StatelessWidget {
+  const _EmptySessionsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Center(
+        child: Text(
+          'No focus sessions saved yet.',
+          style: AppTextStyles.body.copyWith(
+            color: AppColors.textSecondaryFor(context),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _WeeklyBars extends StatelessWidget {
   const _WeeklyBars({required this.values});
 
@@ -502,20 +857,36 @@ class _ShieldLogo extends StatelessWidget {
 }
 
 class _UserAvatar extends StatelessWidget {
-  const _UserAvatar();
+  const _UserAvatar({required this.onTap});
+
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        color: AppColors.blueSoft,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 4),
-        boxShadow: [AppColors.softShadow],
+    return Tooltip(
+      message: 'Open profile settings',
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Ink(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.blueSoftFor(context),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: AppColors.softShadowFor(context),
+            ),
+            child: Icon(
+              Icons.person_rounded,
+              color: AppColors.textPrimaryFor(context),
+            ),
+          ),
+        ),
       ),
-      child: const Icon(Icons.person_rounded, color: AppColors.textPrimary),
     );
   }
 }
@@ -682,4 +1053,31 @@ String _formatCompactSeconds(int seconds) {
     return '${hours}h';
   }
   return '${hours}h ${remainingMinutes}m';
+}
+
+int _focusScore(FocusSessionModel session) {
+  final completionScore = session.completed ? 70 : 42;
+  final durationScore = session.durationMinutes == 0
+      ? 0
+      : ((session.elapsedSeconds / 60) / session.durationMinutes * 20)
+          .clamp(0, 20)
+          .round();
+  final distractionPenalty =
+      (session.distractions * 8) + (session.exitAttempts * 10);
+
+  return (completionScore + durationScore - distractionPenalty)
+      .clamp(0, 100)
+      .toInt();
+}
+
+int _averageFocusScore(List<FocusSessionModel> sessions) {
+  if (sessions.isEmpty) {
+    return 0;
+  }
+
+  final total = sessions.fold<int>(
+    0,
+    (sum, session) => sum + _focusScore(session),
+  );
+  return (total / sessions.length).round();
 }

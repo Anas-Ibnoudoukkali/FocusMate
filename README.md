@@ -44,14 +44,37 @@ widgets, and the main mobile shell.
 The checked-in `lib/firebase_options.dart` is a placeholder so the app structure is
 clear. Replace it with the real generated file before running against Firebase.
 
+1. Create a Firebase project named `FocusMate`.
+2. Enable Authentication with the Email/Password provider.
+3. Create a Cloud Firestore database.
+4. Register the Android app with this package name:
+
+```text
+com.example.focus_mate
+```
+
+5. Configure FlutterFire:
+
 ```bash
 dart pub global activate flutterfire_cli
 flutterfire configure
 ```
 
-Then confirm Firebase Authentication and Cloud Firestore are enabled in your
-Firebase console, and add the generated mobile config files such as
-`android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`.
+6. Publish the security rules from `firestore.rules` in Firebase Console under
+   Firestore Database > Rules.
+
+Authentication is disabled by default so the local/offline version keeps running
+without Firebase. After `flutterfire configure`, start the app with:
+
+```bash
+flutter run --dart-define=ENABLE_AUTH_FLOW=true
+```
+
+For the local/offline version, keep using:
+
+```bash
+flutter run
+```
 
 ## Run
 

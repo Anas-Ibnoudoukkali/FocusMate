@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/focus_session_model.dart';
 import '../models/task_model.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../services/focus_session_storage_service.dart';
 import 'settings_provider.dart';
 import 'task_provider.dart';
@@ -20,10 +23,21 @@ class FocusProvider extends ChangeNotifier {
     required FocusSessionStorageService storageService,
     required TaskProvider taskProvider,
     required SettingsProvider settingsProvider,
+    FirestoreService? firestoreService,
+    AuthService? authService,
   })  : _storageService = storageService,
         _taskProvider = taskProvider,
-        _settingsProvider = settingsProvider {
+        _settingsProvider = settingsProvider,
+        _firestoreService = firestoreService,
+        _authService = authService {
     _settingsProvider.addListener(_handleSettingsChanged);
+    _authSubscription = _authService?.authStateChanges.listen(
+      _handleAuthChanged,
+      onError: (_) {
+        _errorMessage = 'Could not sync focus sessions with your account.';
+        notifyListeners();
+      },
+    );
     loadSessions();
     _resetToDefaultDuration();
   }
@@ -31,8 +45,11 @@ class FocusProvider extends ChangeNotifier {
   final FocusSessionStorageService _storageService;
   final TaskProvider _taskProvider;
   final SettingsProvider _settingsProvider;
+  final FirestoreService? _firestoreService;
+  final AuthService? _authService;
 
   Timer? _timer;
+  StreamSubscription<User?>? _authSubscription;
   List<FocusSessionModel> _sessions = [];
   TaskModel? _selectedTask;
   FocusSessionStatus _status = FocusSessionStatus.idle;
@@ -94,11 +111,39 @@ class FocusProvider extends ChangeNotifier {
         (total, session) => total + session.elapsedSeconds,
       );
 
+  int get completedSessions =>
+      _sessions.where((session) => session.completed).length;
+
+  int get totalDistractions => _sessions.fold<int>(
+        0,
+        (total, session) => total + session.distractions,
+      );
+
+  int get totalExitAttempts => _sessions.fold<int>(
+        0,
+        (total, session) => total + session.exitAttempts,
+      );
+
+  double get completionRate =>
+      _sessions.isEmpty ? 0 : completedSessions / _sessions.length;
+
   int get todayFocusSeconds {
     final now = DateTime.now();
     return _sessions
         .where((session) => _isSameDay(session.endedAt, now))
         .fold<int>(0, (total, session) => total + session.elapsedSeconds);
+  }
+
+  int get todaySessions {
+    final now = DateTime.now();
+    return _sessions.where((session) => _isSameDay(session.endedAt, now)).length;
+  }
+
+  int get todayDistractions {
+    final now = DateTime.now();
+    return _sessions
+        .where((session) => _isSameDay(session.endedAt, now))
+        .fold<int>(0, (total, session) => total + session.distractions);
   }
 
   double get dailyGoalProgress {
@@ -152,9 +197,18 @@ class FocusProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _sessions = await _storageService.loadSessions();
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        _sessions = await firestore.loadFocusSessions(uid);
+      } else {
+        _sessions = await _storageService.loadSessions();
+      }
     } on Object {
-      _errorMessage = 'Could not load focus sessions.';
+      _errorMessage = _isCloudMode
+          ? 'Could not load cloud focus sessions.'
+          : 'Could not load focus sessions.';
     } finally {
       _isLoadingSessions = false;
       notifyListeners();
@@ -316,7 +370,14 @@ class FocusProvider extends ChangeNotifier {
     );
 
     try {
-      await _storageService.saveSession(session);
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        await firestore.saveFocusSession(uid, session);
+      } else {
+        await _storageService.saveSession(session);
+      }
       _sessions = [..._sessions, session];
       if (completed && !_isQuickFocusTask(task)) {
         await _taskProvider.markTaskCompleted(task.id);
@@ -325,7 +386,9 @@ class FocusProvider extends ChangeNotifier {
       _status = FocusSessionStatus.review;
       _errorMessage = null;
     } on Object {
-      _errorMessage = 'Could not save focus session.';
+      _errorMessage = _isCloudMode
+          ? 'Could not save focus session to your account.'
+          : 'Could not save focus session.';
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -347,8 +410,19 @@ class FocusProvider extends ChangeNotifier {
   @override
   void dispose() {
     _timer?.cancel();
+    _authSubscription?.cancel();
     _settingsProvider.removeListener(_handleSettingsChanged);
     super.dispose();
+  }
+
+  String? get _currentUid => _authService?.currentUser?.uid;
+  bool get _isCloudMode => _currentUid != null && _firestoreService != null;
+
+  void _handleAuthChanged(User? user) {
+    if (isActive) {
+      return;
+    }
+    loadSessions();
   }
 
   void _resetToDefaultDuration() {

@@ -80,12 +80,14 @@ class AppTheme {
         secondary: AppColors.indigo,
         surface: AppColors.darkCard,
       ),
-      textTheme: const TextTheme(
-        displayLarge: AppTextStyles.display,
-        headlineLarge: AppTextStyles.headline,
-        titleLarge: AppTextStyles.title,
-        titleMedium: AppTextStyles.cardTitle,
-        bodyMedium: AppTextStyles.body,
+      textTheme: TextTheme(
+        displayLarge: AppTextStyles.display.copyWith(color: Colors.white),
+        headlineLarge: AppTextStyles.headline.copyWith(color: Colors.white),
+        titleLarge: AppTextStyles.title.copyWith(color: Colors.white),
+        titleMedium: AppTextStyles.cardTitle.copyWith(color: Colors.white),
+        bodyMedium: AppTextStyles.body.copyWith(
+          color: AppColors.darkTextSecondary,
+        ),
         labelLarge: AppTextStyles.label,
       ),
       appBarTheme: const AppBarTheme(

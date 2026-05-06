@@ -1,21 +1,39 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/alarm_model.dart';
 import '../services/alarm_storage_service.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 
 class AlarmProvider extends ChangeNotifier {
-  AlarmProvider(this._storageService) {
+  AlarmProvider(
+    this._storageService, {
+    FirestoreService? firestoreService,
+    AuthService? authService,
+  })  : _firestoreService = firestoreService,
+        _authService = authService {
+    _authSubscription = _authService?.authStateChanges.listen(
+      _handleAuthChanged,
+      onError: (_) {
+        _errorMessage = 'Could not sync alarm with your account.';
+        notifyListeners();
+      },
+    );
     loadAlarm();
   }
 
   final AlarmStorageService _storageService;
+  final FirestoreService? _firestoreService;
+  final AuthService? _authService;
 
   Timer? _alarmTimer;
   Timer? _soundTimer;
+  StreamSubscription<User?>? _authSubscription;
   AlarmModel? _alarm;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -56,12 +74,16 @@ class AlarmProvider extends ChangeNotifier {
     final next = currentAlarm.nextOccurrence();
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final today = DateTime(now.year, now.month, now.day);
     final nextDate = DateTime(next.year, next.month, next.day);
 
+    if (nextDate == today) {
+      return 'Today';
+    }
     if (nextDate == tomorrow) {
       return 'Tomorrow';
     }
-    return 'Today';
+    return _weekdayLabel(next.weekday);
   }
 
   Future<void> loadAlarm() async {
@@ -70,13 +92,25 @@ class AlarmProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _alarm = await _storageService.loadAlarm();
-      final stats = await _storageService.loadStats();
-      _alarmAttempts = stats.attempts;
-      _alarmSuccesses = stats.successes;
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        _alarm =
+            await firestore.loadAlarm(uid) ?? await _storageService.loadAlarm();
+        final stats = await firestore.loadAlarmStats(uid);
+        _alarmAttempts = stats['attempts'] ?? 0;
+        _alarmSuccesses = stats['successes'] ?? 0;
+      } else {
+        _alarm = await _storageService.loadAlarm();
+        final stats = await _storageService.loadStats();
+        _alarmAttempts = stats.attempts;
+        _alarmSuccesses = stats.successes;
+      }
       _scheduleForegroundAlarm();
     } on Object {
-      _errorMessage = 'Could not load alarm.';
+      _errorMessage =
+          _isCloudMode ? 'Could not load cloud alarm.' : 'Could not load alarm.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -89,6 +123,8 @@ class AlarmProvider extends ChangeNotifier {
     required bool enabled,
     required String soundName,
     required String challengeDifficulty,
+    required List<String> repeatingDays,
+    required List<DateTime> selectedDates,
   }) async {
     _isSaving = true;
     notifyListeners();
@@ -100,15 +136,37 @@ class AlarmProvider extends ChangeNotifier {
       enabled: enabled,
       soundName: soundName,
       challengeDifficulty: challengeDifficulty,
+      repeatingDays: repeatingDays,
+      selectedDates: selectedDates,
+      challenges: _alarm?.challenges ?? const ['math'],
+      createdAt: _alarm?.createdAt,
     );
 
     try {
-      await _storageService.saveAlarm(updatedAlarm);
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        await firestore.saveAlarm(uid, updatedAlarm);
+        await firestore.saveAlarmStats(
+          uid,
+          attempts: _alarmAttempts,
+          successes: _alarmSuccesses,
+        );
+      } else {
+        await _storageService.saveAlarm(updatedAlarm);
+        await _storageService.saveStats(
+          attempts: _alarmAttempts,
+          successes: _alarmSuccesses,
+        );
+      }
       _alarm = updatedAlarm;
       _errorMessage = null;
       _scheduleForegroundAlarm();
     } on Object {
-      _errorMessage = 'Could not save alarm.';
+      _errorMessage = _isCloudMode
+          ? 'Could not save alarm to your account.'
+          : 'Could not save alarm.';
     } finally {
       _isSaving = false;
       notifyListeners();
@@ -134,6 +192,8 @@ class AlarmProvider extends ChangeNotifier {
       soundName: soundName ?? currentAlarm.soundName,
       challengeDifficulty:
           challengeDifficulty ?? currentAlarm.challengeDifficulty,
+      repeatingDays: currentAlarm.repeatingDays,
+      selectedDates: currentAlarm.selectedDates,
     );
   }
 
@@ -212,16 +272,55 @@ class AlarmProvider extends ChangeNotifier {
   }
 
   Future<void> _persistStats() {
+    final uid = _currentUid;
+    final firestore = _firestoreService;
+
+    if (uid != null && firestore != null) {
+      return firestore.saveAlarmStats(
+        uid,
+        attempts: _alarmAttempts,
+        successes: _alarmSuccesses,
+      );
+    }
+
     return _storageService.saveStats(
       attempts: _alarmAttempts,
       successes: _alarmSuccesses,
     );
   }
 
+  String? get _currentUid => _authService?.currentUser?.uid;
+  bool get _isCloudMode => _currentUid != null && _firestoreService != null;
+
+  void _handleAuthChanged(User? user) {
+    loadAlarm();
+  }
+
+  String _weekdayLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return 'Monday';
+      case DateTime.tuesday:
+        return 'Tuesday';
+      case DateTime.wednesday:
+        return 'Wednesday';
+      case DateTime.thursday:
+        return 'Thursday';
+      case DateTime.friday:
+        return 'Friday';
+      case DateTime.saturday:
+        return 'Saturday';
+      case DateTime.sunday:
+      default:
+        return 'Sunday';
+    }
+  }
+
   @override
   void dispose() {
     _alarmTimer?.cancel();
     _soundTimer?.cancel();
+    _authSubscription?.cancel();
     super.dispose();
   }
 }

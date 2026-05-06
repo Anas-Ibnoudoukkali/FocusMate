@@ -285,7 +285,7 @@ class _ControlCard extends StatelessWidget {
                       .read<NavigationProvider>()
                       .setSection(AppSection.planner)
                   : focus.isActive
-                      ? () => focus.finishSession()
+                      ? () => focus.endSessionEarly()
                       : null,
             ),
           ),
@@ -460,7 +460,9 @@ class _SessionReviewCard extends StatelessWidget {
                     Text('Session Saved', style: AppTextStyles.cardTitle),
                     const SizedBox(height: 6),
                     Text(
-                      'Linked task marked completed.',
+                      session.completed
+                          ? 'Linked task marked completed.'
+                          : 'Session ended early. Task stays open.',
                       style: AppTextStyles.body,
                     ),
                   ],
@@ -884,7 +886,7 @@ class _TaskPickerSheet extends StatelessWidget {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: tasks.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const Divider(color: AppColors.border),
                 itemBuilder: (context, index) {
                   final task = tasks[index];

@@ -9,7 +9,7 @@ import 'providers/settings_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/main/main_shell.dart';
 
-const bool kEnableAuthFlow = false;
+const bool kEnableAuthFlow = bool.fromEnvironment('ENABLE_AUTH_FLOW');
 
 class FocusMateApp extends StatelessWidget {
   const FocusMateApp({super.key});
@@ -40,8 +40,8 @@ class FocusMateApp extends StatelessWidget {
   }
 }
 
-// Keep the login/register flow ready for later. Turn this auth gate back on
-// after Firebase is configured by setting kEnableAuthFlow to true.
+// Keep the login/register flow ready for later. Turn this auth gate on after
+// Firebase is configured with --dart-define=ENABLE_AUTH_FLOW=true.
 class _AuthGate extends StatelessWidget {
   const _AuthGate();
 

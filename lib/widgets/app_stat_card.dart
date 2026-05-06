@@ -27,6 +27,11 @@ class AppStatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardColor = AppColors.cardFor(context);
+    final borderColor = AppColors.borderFor(context);
+    final titleColor = AppColors.textSecondaryFor(context);
+    final valueColor = AppColors.textPrimaryFor(context);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -35,10 +40,10 @@ class AppStatCard extends StatelessWidget {
         child: Ink(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.card,
+            color: cardColor,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [AppColors.softShadow],
+            border: Border.all(color: borderColor),
+            boxShadow: AppColors.softShadowFor(context),
           ),
           child: Row(
             children: [
@@ -58,22 +63,28 @@ class AppStatCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: AppTextStyles.body),
+                    Text(
+                      title,
+                      style: AppTextStyles.body.copyWith(color: titleColor),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       value,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.title,
+                      style: AppTextStyles.title.copyWith(color: valueColor),
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 4),
-                      Text(subtitle!, style: AppTextStyles.body),
+                      Text(
+                        subtitle!,
+                        style: AppTextStyles.body.copyWith(color: titleColor),
+                      ),
                     ],
                   ],
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
         ),

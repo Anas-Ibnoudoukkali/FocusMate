@@ -9,6 +9,14 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
 class DefaultFirebaseOptions {
+  static bool get isConfigured {
+    try {
+      return !_hasPlaceholder(currentPlatform);
+    } on UnsupportedError {
+      return false;
+    }
+  }
+
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
       return web;
@@ -32,20 +40,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_FIREBASE_WEB_API_KEY',
-    appId: 'REPLACE_WITH_FIREBASE_WEB_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_FIREBASE_SENDER_ID',
-    projectId: 'REPLACE_WITH_FIREBASE_PROJECT_ID',
-    authDomain: 'REPLACE_WITH_FIREBASE_PROJECT_ID.firebaseapp.com',
-    storageBucket: 'REPLACE_WITH_FIREBASE_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyDCiQBKNn4Mbkx9pnDkqFQQXUekz2WpaO8',
+    appId: '1:187991416212:web:5a0904047fc1c5563bc381',
+    messagingSenderId: '187991416212',
+    projectId: 'focusmate-89907',
+    authDomain: 'focusmate-89907.firebaseapp.com',
+    storageBucket: 'focusmate-89907.firebasestorage.app',
+    measurementId: 'G-26XGCV8FV5',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'REPLACE_WITH_FIREBASE_ANDROID_API_KEY',
-    appId: 'REPLACE_WITH_FIREBASE_ANDROID_APP_ID',
-    messagingSenderId: 'REPLACE_WITH_FIREBASE_SENDER_ID',
-    projectId: 'REPLACE_WITH_FIREBASE_PROJECT_ID',
-    storageBucket: 'REPLACE_WITH_FIREBASE_PROJECT_ID.appspot.com',
+    apiKey: 'AIzaSyC7DnrzxW8wNulmTFnsxVF4uaU47VhAbYU',
+    appId: '1:187991416212:android:597c8fab3fc14f033bc381',
+    messagingSenderId: '187991416212',
+    projectId: 'focusmate-89907',
+    storageBucket: 'focusmate-89907.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -65,4 +74,11 @@ class DefaultFirebaseOptions {
     storageBucket: 'REPLACE_WITH_FIREBASE_PROJECT_ID.appspot.com',
     iosBundleId: 'com.example.focusMate',
   );
+
+  static bool _hasPlaceholder(FirebaseOptions options) {
+    return options.apiKey.startsWith('REPLACE_WITH_') ||
+        options.appId.startsWith('REPLACE_WITH_') ||
+        options.messagingSenderId.startsWith('REPLACE_WITH_') ||
+        options.projectId.startsWith('REPLACE_WITH_');
+  }
 }
