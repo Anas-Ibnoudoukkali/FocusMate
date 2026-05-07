@@ -8,6 +8,7 @@ import '../../core/utils/validators.dart';
 import '../../models/task_model.dart';
 import '../../providers/focus_provider.dart';
 import '../../providers/navigation_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../widgets/app_gradient_card.dart';
 import '../../widgets/app_primary_button.dart';
@@ -20,6 +21,7 @@ class PlannerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final taskProvider = context.watch<TaskProvider>();
+    final settings = context.watch<SettingsProvider>();
 
     return SafeArea(
       child: Center(
@@ -34,7 +36,10 @@ class PlannerScreen extends StatelessWidget {
               children: [
                 const _PlannerHeader(),
                 const SizedBox(height: 28),
-                _DailyGoalCard(taskProvider: taskProvider),
+                _DailyGoalCard(
+                  taskProvider: taskProvider,
+                  dailyGoalMinutes: settings.dailyGoalMinutes,
+                ),
                 const SizedBox(height: 28),
                 SectionTitle(
                   title: 'Today\'s Plan',
@@ -82,12 +87,22 @@ class PlannerScreen extends StatelessWidget {
 }
 
 class _DailyGoalCard extends StatelessWidget {
-  const _DailyGoalCard({required this.taskProvider});
+  const _DailyGoalCard({
+    required this.taskProvider,
+    required this.dailyGoalMinutes,
+  });
 
   final TaskProvider taskProvider;
+  final int dailyGoalMinutes;
 
   @override
   Widget build(BuildContext context) {
+    final minuteProgress = dailyGoalMinutes == 0
+        ? 0.0
+        : (taskProvider.completedMinutes / dailyGoalMinutes)
+            .clamp(0, 1)
+            .toDouble();
+
     return AppGradientCard(
       title: 'Daily Goal',
       trailing: Container(
@@ -115,9 +130,8 @@ class _DailyGoalCard extends StatelessWidget {
               icon: Icons.access_time_filled_rounded,
               label: 'Study Time',
               value: _formatMinutes(taskProvider.completedMinutes),
-              caption:
-                  'of ${_formatMinutes(taskProvider.dailyGoalMinutes)} goal',
-              progress: taskProvider.minuteProgress,
+              caption: 'of ${_formatMinutes(dailyGoalMinutes)} goal',
+              progress: minuteProgress,
             ),
           ),
           const _GoalDivider(),

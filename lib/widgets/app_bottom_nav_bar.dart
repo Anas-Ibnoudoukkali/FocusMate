@@ -42,6 +42,9 @@ class AppBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cardColor = AppColors.cardFor(context);
+    final borderColor = AppColors.borderFor(context);
+
     return SafeArea(
       top: false,
       child: Container(
@@ -49,10 +52,10 @@ class AppBottomNavBar extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: cardColor,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: AppColors.border),
-          boxShadow: [AppColors.softShadow],
+          border: Border.all(color: borderColor),
+          boxShadow: AppColors.softShadowFor(context),
         ),
         child: Row(
           children: List.generate(_items.length, (index) {
@@ -90,7 +93,9 @@ class _StandardNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textSecondary;
+    final color = active
+        ? AppColors.primary
+        : AppColors.textSecondaryFor(context);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +171,9 @@ class _FocusNavItem extends StatelessWidget {
                 height: 1,
                 fontWeight: active ? FontWeight.w800 : FontWeight.w600,
                 letterSpacing: 0,
-                color: active ? AppColors.primary : AppColors.textSecondary,
+                color: active
+                    ? AppColors.primary
+                    : AppColors.textSecondaryFor(context),
               ),
             ),
           ),

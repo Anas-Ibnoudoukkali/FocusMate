@@ -39,6 +39,7 @@ class AuthProvider extends ChangeNotifier {
           ? _firebaseUser!.displayName!
           : 'Student';
   String get email => _firebaseUser?.email ?? '';
+  String get uid => _firebaseUser?.uid ?? '';
 
   Future<bool> signIn({
     required String email,
@@ -61,6 +62,20 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> sendPasswordReset(String email) async {
     return _runAuthAction(() => _authService.sendPasswordReset(email));
+  }
+
+  Future<bool> updateDisplayName(String name) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty) {
+      _errorMessage = 'Name cannot be empty.';
+      notifyListeners();
+      return false;
+    }
+
+    return _runAuthAction(() async {
+      await _authService.updateDisplayName(cleanName);
+      _firebaseUser = _authService.currentUser;
+    });
   }
 
   Future<void> signOut() async {

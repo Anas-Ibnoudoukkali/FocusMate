@@ -31,12 +31,15 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textMuted = AppColors.textMutedFor(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: AppTextStyles.label.copyWith(color: AppColors.textPrimary),
+          style: AppTextStyles.label.copyWith(color: textPrimary),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -47,13 +50,13 @@ class AppTextField extends StatelessWidget {
           validator: validator,
           onFieldSubmitted: onFieldSubmitted,
           style: AppTextStyles.body.copyWith(
-            color: AppColors.textPrimary,
+            color: textPrimary,
             fontWeight: FontWeight.w700,
           ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: AppTextStyles.body.copyWith(
-              color: AppColors.textMuted,
+              color: textMuted,
               fontWeight: FontWeight.w500,
             ),
             prefixIcon: prefixIcon == null

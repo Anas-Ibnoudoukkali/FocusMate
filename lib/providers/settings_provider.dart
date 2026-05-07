@@ -1,14 +1,34 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/app_settings_model.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import '../services/settings_storage_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  SettingsProvider(this._storageService) {
+  SettingsProvider(
+    this._storageService, {
+    FirestoreService? firestoreService,
+    AuthService? authService,
+  })  : _firestoreService = firestoreService,
+        _authService = authService {
+    _authSubscription = _authService?.authStateChanges.listen(
+      _handleAuthChanged,
+      onError: (_) {
+        _errorMessage = 'Could not sync settings with your account.';
+        notifyListeners();
+      },
+    );
     loadSettings();
   }
 
   final SettingsStorageService _storageService;
+  final FirestoreService? _firestoreService;
+  final AuthService? _authService;
+  StreamSubscription<User?>? _authSubscription;
 
   AppSettingsModel _settings = const AppSettingsModel();
   bool _isLoading = true;
@@ -31,9 +51,19 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _settings = await _storageService.loadSettings();
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        _settings = await firestore.loadSettings(uid);
+        await _storageService.saveSettings(_settings);
+      } else {
+        _settings = await _storageService.loadSettings();
+      }
     } on Object {
-      _errorMessage = 'Could not load settings.';
+      _errorMessage = _isCloudMode
+          ? 'Could not load cloud settings.'
+          : 'Could not load settings.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -56,6 +86,10 @@ class SettingsProvider extends ChangeNotifier {
     return _update(_settings.copyWith(challengeDifficulty: value));
   }
 
+  Future<void> updateDailyGoalMinutes(int minutes) {
+    return _update(_settings.copyWith(dailyGoalMinutes: minutes));
+  }
+
   Future<void> updateDarkMode(bool value) {
     return _update(_settings.copyWith(darkMode: value));
   }
@@ -66,10 +100,31 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final uid = _currentUid;
+      final firestore = _firestoreService;
+
+      if (uid != null && firestore != null) {
+        await firestore.saveSettings(uid, settings);
+      }
       await _storageService.saveSettings(settings);
     } on Object {
-      _errorMessage = 'Could not save settings.';
+      _errorMessage = _isCloudMode
+          ? 'Could not save settings to your account.'
+          : 'Could not save settings.';
       notifyListeners();
     }
+  }
+
+  String? get _currentUid => _authService?.currentUser?.uid;
+  bool get _isCloudMode => _currentUid != null && _firestoreService != null;
+
+  void _handleAuthChanged(User? user) {
+    loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
   }
 }

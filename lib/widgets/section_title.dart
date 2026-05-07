@@ -17,6 +17,9 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final titleColor = AppColors.textPrimaryFor(context);
+    final subtitleColor = AppColors.textSecondaryFor(context);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -24,10 +27,19 @@ class SectionTitle extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: AppTextStyles.cardTitle.copyWith(fontSize: 20)),
+              Text(
+                title,
+                style: AppTextStyles.cardTitle.copyWith(
+                  color: titleColor,
+                  fontSize: 20,
+                ),
+              ),
               if (subtitle != null) ...[
                 const SizedBox(height: 4),
-                Text(subtitle!, style: AppTextStyles.body),
+                Text(
+                  subtitle!,
+                  style: AppTextStyles.body.copyWith(color: subtitleColor),
+                ),
               ],
             ],
           ),

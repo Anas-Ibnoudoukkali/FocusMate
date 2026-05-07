@@ -12,6 +12,8 @@ class UserModel {
     this.strictMode = AppConstants.defaultStrictMode,
     this.challengeDifficulty = AppConstants.defaultChallengeDifficulty,
     this.dailyGoalMinutes = AppConstants.defaultDailyGoalMinutes,
+    this.alarmSound = 'Bright Morning',
+    this.darkMode = false,
   });
 
   final String uid;
@@ -22,6 +24,8 @@ class UserModel {
   final bool strictMode;
   final String challengeDifficulty;
   final int dailyGoalMinutes;
+  final String alarmSound;
+  final bool darkMode;
 
   factory UserModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
@@ -41,6 +45,8 @@ class UserModel {
           AppConstants.defaultChallengeDifficulty,
       dailyGoalMinutes: (data['dailyGoalMinutes'] as num?)?.toInt() ??
           AppConstants.defaultDailyGoalMinutes,
+      alarmSound: data['alarmSound'] as String? ?? 'Bright Morning',
+      darkMode: data['darkMode'] as bool? ?? false,
     );
   }
 
@@ -54,6 +60,8 @@ class UserModel {
       'strictMode': strictMode,
       'challengeDifficulty': challengeDifficulty,
       'dailyGoalMinutes': dailyGoalMinutes,
+      'alarmSound': alarmSound,
+      'darkMode': darkMode,
     };
   }
 
@@ -67,6 +75,8 @@ class UserModel {
       'strictMode': strictMode,
       'challengeDifficulty': challengeDifficulty,
       'dailyGoalMinutes': dailyGoalMinutes,
+      'alarmSound': alarmSound,
+      'darkMode': darkMode,
     };
   }
 
