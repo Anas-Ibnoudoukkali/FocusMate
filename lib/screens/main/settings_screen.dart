@@ -693,7 +693,7 @@ String _formatGoalMinutes(int minutes) {
   final remainingMinutes = minutes % 60;
 
   if (hours == 0) {
-    return '${remainingMinutes} min';
+    return '$remainingMinutes min';
   }
   if (remainingMinutes == 0) {
     return '${hours}h';
